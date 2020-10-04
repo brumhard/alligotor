@@ -1,6 +1,9 @@
 package pkg
 
-import "testing"
+import (
+	"github.com/stretchr/testify/require"
+	"testing"
+)
 
 func TestConfig(t *testing.T) {
 	testStruct := struct {
@@ -8,11 +11,14 @@ func TestConfig(t *testing.T) {
 		Something string
 	}{}
 
-	config := Config{
-		Files: []string{"./config"},
-		Env:   false,
+	config := Collector{
+		File: ConfigFiles{
+			Locations: []string{"./"},
+			BaseName:  "config",
+		},
+		Env: false,
 	}
-	config.Get(&testStruct)
+	require.NoError(t, config.Get(&testStruct))
 
 	// default should be set
 }

@@ -13,12 +13,17 @@ const (
 	flagKey    = "flag"
 )
 
-type Config struct {
-	Files []string
+type Collector struct {
+	Files ConfigFiles
 	Env   bool
 }
 
-type FieldConfig struct {
+type ConfigFiles struct {
+	Locations []string
+	BaseName  string
+}
+
+type Parameter struct {
 	DefaultStr string
 	EnvName    string
 	Flag       *Flag
@@ -29,7 +34,7 @@ type Flag struct {
 	ShortName string
 }
 
-func (c *Config) Get(v interface{}) error {
+func (c *Collector) Get(v interface{}) error {
 	// TODO: read from file
 	// TODO: check that v is pointer
 	// TODO: dereference v below
@@ -40,7 +45,7 @@ func (c *Config) Get(v interface{}) error {
 	}
 
 	t := reflect.Indirect(value).Type()
-	configMap := make(map[*reflect.StructField]FieldConfig)
+	configMap := make(map[*reflect.StructField]Parameter)
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -51,7 +56,7 @@ func (c *Config) Get(v interface{}) error {
 			continue
 		}
 
-		fieldConfig := FieldConfig{}
+		fieldConfig := Parameter{}
 
 		for _, paramStr := range strings.Split(configStr, ",") {
 			keyVal := strings.Split(paramStr, "=")
