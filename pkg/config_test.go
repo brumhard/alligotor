@@ -34,9 +34,6 @@ func TestCollector(t *testing.T) {
 	r.NoError(config.Get(&testStruct))
 	r.Equal(8080, testStruct.Port)
 
-	// use defaults
-	r.Equal("ARRRR", testStruct.Something)
-
 	// read config from yaml file
 	tempDir := t.TempDir()
 	r.NoError(ioutil.WriteFile(tempDir+"/config.yml", []byte("port: 4000"), 0644))
