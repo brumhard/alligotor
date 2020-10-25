@@ -1,21 +1,26 @@
 package pkg
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path"
 	"reflect"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
-	tag        = "config"
-	defaultKey = "default"
-	envKey     = "env"
-	flagKey    = "flag"
+	tag     = "config"
+	envKey  = "env"
+	flagKey = "flag"
 )
 
 type Collector struct {
 	Files ConfigFiles
 	Env   bool
+	Flags bool
 }
 
 type ConfigFiles struct {
@@ -23,10 +28,10 @@ type ConfigFiles struct {
 	BaseName  string
 }
 
-type Parameter struct {
-	DefaultStr string
-	EnvName    string
-	Flag       *Flag
+type ParameterConfig struct {
+	// TODO: add support for file option
+	EnvName string
+	Flag    *Flag
 }
 
 type Flag struct {
@@ -34,29 +39,31 @@ type Flag struct {
 	ShortName string
 }
 
+type Field struct {
+	Name   string
+	Value  reflect.Value
+	Config ParameterConfig
+}
+
 func (c *Collector) Get(v interface{}) error {
-	// TODO: read from file
-	// TODO: check that v is pointer
-	// TODO: dereference v below
+	// TODO: add recursion
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Ptr {
 		// TODO: define package lvl error instead
 		return fmt.Errorf("pointer is expected")
 	}
 
-	t := reflect.Indirect(value).Type()
-	configMap := make(map[*reflect.StructField]Parameter)
-
+	// collect info about fields with tags, value...
+	t := reflect.Indirect(value)
+	var fields []Field
 	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		configStr, ok := field.Tag.Lookup(tag)
+		configStr, ok := t.Type().Field(i).Tag.Lookup(tag)
 		if !ok {
 			// TODO: check if field is struct and if so go through fields recursively
 			continue
 		}
 
-		fieldConfig := Parameter{}
+		fieldConfig := ParameterConfig{}
 
 		for _, paramStr := range strings.Split(configStr, ",") {
 			keyVal := strings.Split(paramStr, "=")
@@ -68,8 +75,6 @@ func (c *Collector) Get(v interface{}) error {
 			val := keyVal[1]
 
 			switch key {
-			case defaultKey:
-				fieldConfig.DefaultStr = val
 			case envKey:
 				fieldConfig.EnvName = val
 			case flagKey:
@@ -82,10 +87,58 @@ func (c *Collector) Get(v interface{}) error {
 			}
 		}
 
-		configMap[&field] = fieldConfig
+		fields = append(fields, Field{
+			Name:   t.Type().Field(i).Name,
+			Value:  t.Field(i),
+			Config: fieldConfig,
+		})
+	}
+
+	// read files
+	for _, fileLocation := range c.Files.Locations {
+		fileInfos, err := ioutil.ReadDir(fileLocation)
+		if err != nil {
+			continue
+		}
+
+		for _, fileInfo := range fileInfos {
+			name := fileInfo.Name()
+			if strings.TrimSuffix(name, path.Ext(name)) != c.Files.BaseName {
+				continue
+			}
+
+			fileBytes, err := ioutil.ReadFile(path.Join(fileLocation, name))
+			if err != nil {
+				return err
+			}
+
+			m, err := unmarshal(fileBytes)
+			if err != nil {
+				return err
+			}
+
+			for _, f := range fields {
+				if valueForField, ok := m.get(f.Name); ok {
+					f.Value.Set(reflect.ValueOf(valueForField))
+				}
+			}
+		}
 	}
 
 	return nil
+}
+
+func unmarshal(bytes []byte) (*ciMap, error) {
+	m := newCiMap()
+	if err := yaml.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	if err := json.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	return nil, fmt.Errorf("could not unmarshal")
 }
 
 func readFlag(flagStr string) (*Flag, error) {
