@@ -15,6 +15,7 @@ const (
 	tag     = "config"
 	envKey  = "env"
 	flagKey = "flag"
+	fileKey = "file"
 )
 
 type Collector struct {
@@ -29,9 +30,9 @@ type ConfigFiles struct {
 }
 
 type ParameterConfig struct {
-	// TODO: add support for file option
-	EnvName string
-	Flag    *Flag
+	FileField string
+	EnvName   string
+	Flag      *Flag
 }
 
 type Flag struct {
@@ -77,6 +78,8 @@ func (c *Collector) Get(v interface{}) error {
 			switch key {
 			case envKey:
 				fieldConfig.EnvName = val
+			case fileKey:
+				fieldConfig.FileField = val
 			case flagKey:
 				flagConf, err := readFlag(val)
 				if err != nil {
@@ -118,7 +121,11 @@ func (c *Collector) Get(v interface{}) error {
 			}
 
 			for _, f := range fields {
-				if valueForField, ok := m.get(f.Name); ok {
+				fieldName := f.Config.FileField
+				if fieldName == "" {
+					fieldName = f.Name
+				}
+				if valueForField, ok := m.get(fieldName); ok {
 					f.Value.Set(reflect.ValueOf(valueForField))
 				}
 			}
