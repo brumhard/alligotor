@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -49,6 +51,44 @@ func TestCollector(t *testing.T) {
 
 	r.NoError(config.Get(&testStruct))
 	r.Equal(4000, testStruct.Port)
+
+	// read env, overwrites files
+	r.NoError(os.Setenv("PORT", "5000"))
+	r.NoError(config.Get(&testStruct))
+	r.Equal(5000, testStruct.Port)
+}
+
+type testType struct {
+	S []string
+}
+
+func (t *testType) UnmarshalText(text []byte) error {
+	t.S = strings.Split(string(text), ",")
+	return nil
+}
+
+func TestCollector_Env_UnmarshalText(t *testing.T) {
+	r := require.New(t)
+
+	// options:
+	// - file=x overwrites default path to variable in file
+	// - env=x overwrites default environment variable name to be used
+	// - flag=x xy sets the flag names that should be used
+	testStruct := struct {
+		SomeThing testType `config:"env=SOMETHING"`
+	}{
+		SomeThing: testType{},
+	}
+
+	config := Collector{
+		Files: ConfigFiles{},
+		Env:   true,
+		Flags: false,
+	}
+
+	r.NoError(os.Setenv("SOMETHING", "l,t,l"))
+	r.NoError(config.Get(&testStruct))
+	r.Equal([]string{"l", "t", "l"}, testStruct.SomeThing.S)
 }
 
 func TestCollector_FileOverwrite(t *testing.T) {

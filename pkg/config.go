@@ -1,11 +1,15 @@
 package pkg
 
 import (
+	"encoding"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -83,6 +87,11 @@ func (c *Collector) Get(v interface{}) error {
 		return err
 	}
 
+	// read env
+	if err := c.readEnv(fields); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -149,6 +158,7 @@ func (c *Collector) readFiles(fields []*Field) error {
 				if valueForField, ok := m.get(fieldName); ok {
 					f.Value.Set(reflect.ValueOf(valueForField))
 				}
+
 			}
 		}
 	}
@@ -156,7 +166,67 @@ func (c *Collector) readFiles(fields []*Field) error {
 	return nil
 }
 
+func (c *Collector) readEnv(fields []*Field) error {
+	// TODO: add support for nested structs
+	for _, f := range fields {
+		envName := f.Config.EnvName
+		if envName == "" {
+			envName = strings.ToUpper(f.Name)
+		}
+
+		if envVal, ok := os.LookupEnv(envName); ok {
+			if err := setFromEnv(f.Value, envVal); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+var ErrInvalidType = errors.New("invalid type")
+
+func setFromEnv(target reflect.Value, value string) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = ErrInvalidType
+		}
+	}()
+
+	switch target.Kind() {
+	case reflect.Int:
+		intVal, err := strconv.ParseInt(value, 10, 0)
+		if err != nil {
+			return err
+		}
+
+		target.SetInt(intVal)
+	case reflect.String:
+		target.SetString(value)
+
+	default:
+		if textMarshal, ok := target.Interface().(encoding.TextUnmarshaler); ok {
+			if err := textMarshal.UnmarshalText([]byte(value)); err != nil {
+				return err
+			}
+			return nil
+		}
+		// check if Addr is possible with CanAddr
+		if textMarshal, ok := target.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			if err := textMarshal.UnmarshalText([]byte(value)); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		target.Set(reflect.ValueOf(value))
+	}
+
+	return nil
+}
+
 func unmarshal(bytes []byte) (*ciMap, error) {
+	// TODO: add support for nested structs
 	m := newCiMap()
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
