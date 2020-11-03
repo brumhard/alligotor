@@ -13,8 +13,13 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	ErrMalformedFlagConfig  = fmt.Errorf("malformed flag config strings")
+	ErrFileTypeNotSupported = fmt.Errorf("could not unmarshal file, file type not supported")
+	ErrPointerExpected      = fmt.Errorf("expected a pointer as input")
 )
 
 const (
@@ -53,11 +58,10 @@ type Field struct {
 }
 
 func (c *Collector) Get(v interface{}) error {
-	// TODO: add recursion
+	// TODO: add support for nested structs
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Ptr {
-		// TODO: define package lvl error instead
-		return fmt.Errorf("pointer is expected")
+		return ErrPointerExpected
 	}
 
 	// collect info about fields with tags, value...
@@ -68,7 +72,6 @@ func (c *Collector) Get(v interface{}) error {
 	for i := 0; i < t.NumField(); i++ {
 		configStr, ok := t.Type().Field(i).Tag.Lookup(tag)
 		if !ok {
-			// TODO: check if field is struct and if so go through fields recursively
 			continue
 		}
 
@@ -173,7 +176,6 @@ func (c *Collector) readFiles(fields []*Field) error {
 }
 
 func (c *Collector) readEnv(fields []*Field) error {
-	// TODO: add support for nested structs
 	for _, f := range fields {
 		envName := f.Config.EnvName
 		if envName == "" {
@@ -193,13 +195,14 @@ func (c *Collector) readEnv(fields []*Field) error {
 func (c *Collector) readPFlags(fields []*Field) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	fieldToString := make(map[*Field]*string)
+
 	for _, f := range fields {
 		var fieldString string
+
 		flagSet.StringVarP(&fieldString, f.Config.Flag.Name, f.Config.Flag.ShortName, "", "idk")
 		fieldToString[f] = &fieldString
 	}
 
-	//pflag.Parse()
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return err
 	}
@@ -228,6 +231,7 @@ func setFromString(target reflect.Value, value string) (err error) {
 		if err != nil {
 			return err
 		}
+
 		target.SetInt(intVal)
 	case reflect.String:
 		target.SetString(value)
@@ -237,17 +241,11 @@ func setFromString(target reflect.Value, value string) (err error) {
 		// TODO: !!!!!!!!!! could check for struct tags, and if there are some, execute and procedd to fields afterwards
 	default:
 		if textMarshal, ok := target.Interface().(encoding.TextUnmarshaler); ok {
-			if err := textMarshal.UnmarshalText([]byte(value)); err != nil {
-				return err
-			}
-			return nil
+			return textMarshal.UnmarshalText([]byte(value))
 		}
 		// check if Addr is possible with CanAddr
 		if textMarshal, ok := target.Addr().Interface().(encoding.TextUnmarshaler); ok {
-			if err := textMarshal.UnmarshalText([]byte(value)); err != nil {
-				return err
-			}
-			return nil
+			return textMarshal.UnmarshalText([]byte(value))
 		}
 
 		target.Set(reflect.ValueOf(value))
@@ -267,7 +265,7 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 		return m, nil
 	}
 
-	return nil, fmt.Errorf("could not unmarshal")
+	return nil, ErrFileTypeNotSupported
 }
 
 func readFlagConfig(flagStr string) (*Flag, error) {
@@ -275,7 +273,7 @@ func readFlagConfig(flagStr string) (*Flag, error) {
 	flags := strings.Split(flagStr, " ")
 
 	if len(flags) > 2 {
-		return nil, fmt.Errorf("malformed flag config strings")
+		return nil, ErrMalformedFlagConfig
 	}
 
 	for _, flag := range flags {

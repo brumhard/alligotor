@@ -64,6 +64,7 @@ type testType struct {
 
 func (t *testType) UnmarshalText(text []byte) error {
 	t.S = strings.Split(string(text), ",")
+
 	return nil
 }
 
@@ -81,9 +82,7 @@ func TestCollector_Env_UnmarshalText(t *testing.T) {
 	}
 
 	config := Collector{
-		Files: ConfigFiles{},
-		Env:   true,
-		Flags: false,
+		Env: true,
 	}
 
 	r.NoError(os.Setenv("SOMETHING", "l,t,l"))

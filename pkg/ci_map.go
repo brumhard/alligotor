@@ -21,6 +21,7 @@ func (c ciMap) set(s string, b bool) {
 
 func (c ciMap) get(s string) (b interface{}, ok bool) {
 	b, ok = c.m[strings.ToLower(s)]
+
 	return
 }
 
