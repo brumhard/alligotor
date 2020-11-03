@@ -122,3 +122,31 @@ func TestCollector_FileOverwrite(t *testing.T) {
 	r.NoError(config.Get(&testStruct))
 	r.Equal(4000, testStruct.Port)
 }
+
+func TestCollector_Get_Flags(t *testing.T) {
+	r := require.New(t)
+
+	// options:
+	// - file=x overwrites default path to variable in file
+	// - env=x overwrites default environment variable name to be used
+	// - flag=x xy sets the flag names that should be used
+	testStruct := struct {
+		Port int `config:"flag=port p"`
+	}{}
+
+	config := Collector{
+		Flags: true,
+	}
+
+	// short name flag
+	os.Args = []string{"commandName", "-p", "1234"}
+
+	r.NoError(config.Get(&testStruct))
+	r.Equal(1234, testStruct.Port)
+
+	// full name flag
+	os.Args = []string{"commandName", "--port", "4567"}
+
+	r.NoError(config.Get(&testStruct))
+	r.Equal(4567, testStruct.Port)
+}

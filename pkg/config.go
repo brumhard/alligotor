@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/pflag"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -92,6 +94,11 @@ func (c *Collector) Get(v interface{}) error {
 		return err
 	}
 
+	// read flags
+	if err := c.readPFlags(fields); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -113,7 +120,7 @@ func readFieldConfig(configStr string) (*ParameterConfig, error) {
 		case fileKey:
 			fieldConfig.FileField = val
 		case flagKey:
-			flagConf, err := readFlag(val)
+			flagConf, err := readFlagConfig(val)
 			if err != nil {
 				return nil, err
 			}
@@ -158,7 +165,6 @@ func (c *Collector) readFiles(fields []*Field) error {
 				if valueForField, ok := m.get(fieldName); ok {
 					f.Value.Set(reflect.ValueOf(valueForField))
 				}
-
 			}
 		}
 	}
@@ -175,7 +181,7 @@ func (c *Collector) readEnv(fields []*Field) error {
 		}
 
 		if envVal, ok := os.LookupEnv(envName); ok {
-			if err := setFromEnv(f.Value, envVal); err != nil {
+			if err := setFromString(f.Value, envVal); err != nil {
 				return err
 			}
 		}
@@ -184,9 +190,32 @@ func (c *Collector) readEnv(fields []*Field) error {
 	return nil
 }
 
+func (c *Collector) readPFlags(fields []*Field) error {
+	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
+	fieldToString := make(map[*Field]*string)
+	for _, f := range fields {
+		var fieldString string
+		flagSet.StringVarP(&fieldString, f.Config.Flag.Name, f.Config.Flag.ShortName, "", "idk")
+		fieldToString[f] = &fieldString
+	}
+
+	//pflag.Parse()
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+
+	for f, fieldString := range fieldToString {
+		if err := setFromString(f.Value, *fieldString); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 var ErrInvalidType = errors.New("invalid type")
 
-func setFromEnv(target reflect.Value, value string) (err error) {
+func setFromString(target reflect.Value, value string) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = ErrInvalidType
@@ -194,16 +223,18 @@ func setFromEnv(target reflect.Value, value string) (err error) {
 	}()
 
 	switch target.Kind() {
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		intVal, err := strconv.ParseInt(value, 10, 0)
 		if err != nil {
 			return err
 		}
-
 		target.SetInt(intVal)
 	case reflect.String:
 		target.SetString(value)
-
+		// TODO: add support for bool and other reflect types?
+		// TODO: does the Unmarshaller interface make sense here?, only structs can implement it and in this case
+		// the parser would dig into the fields
+		// TODO: !!!!!!!!!! could check for struct tags, and if there are some, execute and procedd to fields afterwards
 	default:
 		if textMarshal, ok := target.Interface().(encoding.TextUnmarshaler); ok {
 			if err := textMarshal.UnmarshalText([]byte(value)); err != nil {
@@ -239,7 +270,7 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 	return nil, fmt.Errorf("could not unmarshal")
 }
 
-func readFlag(flagStr string) (*Flag, error) {
+func readFlagConfig(flagStr string) (*Flag, error) {
 	flagConf := &Flag{}
 	flags := strings.Split(flagStr, " ")
 
