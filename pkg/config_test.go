@@ -71,10 +71,6 @@ func (t *testType) UnmarshalText(text []byte) error {
 func TestCollector_Env_UnmarshalText(t *testing.T) {
 	r := require.New(t)
 
-	// options:
-	// - file=x overwrites default path to variable in file
-	// - env=x overwrites default environment variable name to be used
-	// - flag=x xy sets the flag names that should be used
 	testStruct := struct {
 		SomeThing testType `config:"env=SOMETHING"`
 	}{
@@ -93,12 +89,8 @@ func TestCollector_Env_UnmarshalText(t *testing.T) {
 func TestCollector_FileOverwrite(t *testing.T) {
 	r := require.New(t)
 
-	// options:
-	// - file=x overwrites default path to variable in file
-	// - env=x overwrites default environment variable name to be used
-	// - flag=x xy sets the flag names that should be used
 	testStruct := struct {
-		Port      int `config:"file=OVERWRITE,env=PORT,flag=port p"`
+		Port      int `config:"file=OVERWRITE"`
 		Something string
 	}{
 		Port: 8080,
@@ -109,8 +101,6 @@ func TestCollector_FileOverwrite(t *testing.T) {
 			Locations: []string{},
 			BaseName:  "config",
 		},
-		Env:   false,
-		Flags: false,
 	}
 
 	// read config from yaml file
@@ -122,15 +112,47 @@ func TestCollector_FileOverwrite(t *testing.T) {
 	r.Equal(4000, testStruct.Port)
 }
 
+func TestCollector_Get_Env(t *testing.T) {
+	r := require.New(t)
+
+	testStruct := struct {
+		Port int
+	}{}
+
+	config := Collector{
+		Flags: true,
+	}
+
+	// short name flag
+	// read env, overwrites files
+	r.NoError(os.Setenv("PORT", "5000"))
+	r.NoError(config.Get(&testStruct))
+	r.Equal(5000, testStruct.Port)
+}
+
+func TestCollector_Get_Env_Overwrite(t *testing.T) {
+	r := require.New(t)
+
+	testStruct := struct {
+		Port int `config:"env=PORT"`
+	}{}
+
+	config := Collector{
+		Flags: true,
+	}
+
+	// short name flag
+	// read env, overwrites files
+	r.NoError(os.Setenv("PORT", "5000"))
+	r.NoError(config.Get(&testStruct))
+	r.Equal(5000, testStruct.Port)
+}
+
 func TestCollector_Get_Flags(t *testing.T) {
 	r := require.New(t)
 
-	// options:
-	// - file=x overwrites default path to variable in file
-	// - env=x overwrites default environment variable name to be used
-	// - flag=x xy sets the flag names that should be used
 	testStruct := struct {
-		Port int `config:"flag=port p"`
+		Port int
 	}{}
 
 	config := Collector{
@@ -140,11 +162,39 @@ func TestCollector_Get_Flags(t *testing.T) {
 	// short name flag
 	os.Args = []string{"commandName", "-p", "1234"}
 
+	r.Error(config.Get(&testStruct))
+
+	// full name flag
+	os.Args = []string{"commandName", "--port", "4567"}
+
+	r.NoError(config.Get(&testStruct))
+	r.Equal(4567, testStruct.Port)
+}
+
+func TestCollector_Get_Flags_Overwrite(t *testing.T) {
+	r := require.New(t)
+
+	testStruct := struct {
+		Port int `config:"flag=whaaaat w"`
+	}{}
+
+	config := Collector{
+		Flags: true,
+	}
+
+	// default name flag
+	os.Args = []string{"commandName", "--port", "4567"}
+
+	r.Error(config.Get(&testStruct))
+
+	// short name flag
+	os.Args = []string{"commandName", "-w", "1234"}
+
 	r.NoError(config.Get(&testStruct))
 	r.Equal(1234, testStruct.Port)
 
 	// full name flag
-	os.Args = []string{"commandName", "--port", "4567"}
+	os.Args = []string{"commandName", "--whaaaat", "4567"}
 
 	r.NoError(config.Get(&testStruct))
 	r.Equal(4567, testStruct.Port)

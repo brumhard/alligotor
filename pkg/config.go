@@ -43,7 +43,7 @@ type ConfigFiles struct {
 type ParameterConfig struct {
 	FileField string
 	EnvName   string
-	Flag      *Flag
+	Flag      Flag
 }
 
 type Flag struct {
@@ -54,7 +54,7 @@ type Flag struct {
 type Field struct {
 	Name   string
 	Value  reflect.Value
-	Config *ParameterConfig
+	Config ParameterConfig
 }
 
 func (c *Collector) Get(v interface{}) error {
@@ -70,14 +70,17 @@ func (c *Collector) Get(v interface{}) error {
 	var fields []*Field
 
 	for i := 0; i < t.NumField(); i++ {
-		configStr, ok := t.Type().Field(i).Tag.Lookup(tag)
-		if !ok {
-			continue
-		}
+		configStr := t.Type().Field(i).Tag.Get(tag)
 
-		fieldConfig, err := readFieldConfig(configStr)
-		if err != nil {
-			return err
+		fieldConfig := ParameterConfig{}
+
+		if configStr != "" {
+			var err error
+
+			fieldConfig, err = readFieldConfig(configStr)
+			if err != nil {
+				return err
+			}
 		}
 
 		fields = append(fields, &Field{
@@ -105,8 +108,8 @@ func (c *Collector) Get(v interface{}) error {
 	return nil
 }
 
-func readFieldConfig(configStr string) (*ParameterConfig, error) {
-	fieldConfig := &ParameterConfig{}
+func readFieldConfig(configStr string) (ParameterConfig, error) {
+	fieldConfig := ParameterConfig{}
 
 	for _, paramStr := range strings.Split(configStr, ",") {
 		keyVal := strings.Split(paramStr, "=")
@@ -125,7 +128,7 @@ func readFieldConfig(configStr string) (*ParameterConfig, error) {
 		case flagKey:
 			flagConf, err := readFlagConfig(val)
 			if err != nil {
-				return nil, err
+				return ParameterConfig{}, err
 			}
 
 			fieldConfig.Flag = flagConf
@@ -192,23 +195,43 @@ func (c *Collector) readEnv(fields []*Field) error {
 	return nil
 }
 
+type flagInfo struct {
+	valueStr *string
+	flag     *pflag.Flag
+}
+
 func (c *Collector) readPFlags(fields []*Field) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	fieldToString := make(map[*Field]*string)
+	fieldToFlagInfo := make(map[*Field]flagInfo)
 
 	for _, f := range fields {
-		var fieldString string
+		longName := strings.ToLower(f.Name)
+		if f.Config.Flag.Name != "" {
+			longName = f.Config.Flag.Name
+		}
 
-		flagSet.StringVarP(&fieldString, f.Config.Flag.Name, f.Config.Flag.ShortName, "", "idk")
-		fieldToString[f] = &fieldString
+		shortName := ""
+		if f.Config.Flag.ShortName != "" {
+			shortName = f.Config.Flag.ShortName
+		}
+
+		fieldToFlagInfo[f] = flagInfo{
+			valueStr: flagSet.StringP(longName, shortName, "", "idk"),
+			flag:     flagSet.Lookup(longName),
+		}
 	}
 
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return err
 	}
 
-	for f, fieldString := range fieldToString {
-		if err := setFromString(f.Value, *fieldString); err != nil {
+	for f, flagInfo := range fieldToFlagInfo {
+		// differentiate a flag that is not set from a flag that is set to ""
+		if !flagInfo.flag.Changed {
+			continue
+		}
+
+		if err := setFromString(f.Value, *flagInfo.valueStr); err != nil {
 			return err
 		}
 	}
@@ -268,12 +291,12 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFlagConfig(flagStr string) (*Flag, error) {
-	flagConf := &Flag{}
+func readFlagConfig(flagStr string) (Flag, error) {
+	flagConf := Flag{}
 	flags := strings.Split(flagStr, " ")
 
 	if len(flags) > 2 {
-		return nil, ErrMalformedFlagConfig
+		return Flag{}, ErrMalformedFlagConfig
 	}
 
 	for _, flag := range flags {
