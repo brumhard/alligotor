@@ -56,6 +56,11 @@ func TestCollector(t *testing.T) {
 	r.NoError(os.Setenv("PORT", "5000"))
 	r.NoError(config.Get(&testStruct))
 	r.Equal(5000, testStruct.Port)
+
+	// read flag, overwrites files
+	os.Args = []string{"commandName", "-p", "1234"}
+	r.NoError(config.Get(&testStruct))
+	r.Equal(1234, testStruct.Port)
 }
 
 type testType struct {

@@ -258,10 +258,7 @@ func setFromString(target reflect.Value, value string) (err error) {
 		target.SetInt(intVal)
 	case reflect.String:
 		target.SetString(value)
-		// TODO: add support for bool and other reflect types?
-		// TODO: does the Unmarshaller interface make sense here?, only structs can implement it and in this case
-		// the parser would dig into the fields
-		// TODO: !!!!!!!!!! could check for struct tags, and if there are some, execute and procedd to fields afterwards
+		// TODO: add support for bool and other reflect types
 	default:
 		if textMarshal, ok := target.Interface().(encoding.TextUnmarshaler); ok {
 			return textMarshal.UnmarshalText([]byte(value))
@@ -278,7 +275,6 @@ func setFromString(target reflect.Value, value string) (err error) {
 }
 
 func unmarshal(bytes []byte) (*ciMap, error) {
-	// TODO: add support for nested structs
 	m := newCiMap()
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
