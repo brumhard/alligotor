@@ -168,7 +168,7 @@ func (c *Collector) readFiles(fields []*Field) error {
 					fieldName = f.Name
 				}
 
-				if valueForField, ok := m.get(fieldName); ok {
+				if valueForField, ok := m.Get(fieldName); ok {
 					f.Value.Set(reflect.ValueOf(valueForField))
 				}
 			}

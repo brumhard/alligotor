@@ -15,42 +15,29 @@ func newCiMap() *ciMap {
 	return &ciMap{m: make(map[string]interface{})}
 }
 
-func (c ciMap) set(s string, b bool) {
+func (c ciMap) Set(s string, b bool) {
 	c.m[strings.ToLower(s)] = b
 }
 
-func (c ciMap) get(s string) (b interface{}, ok bool) {
-	b, ok = c.m[strings.ToLower(s)]
+func (c ciMap) Get(s string) (b interface{}, ok bool) {
+	// go through map keys and check if key.ToLower() matches, s.ToLower()
+	for key := range c.m {
+		if !strings.EqualFold(key, s) {
+			continue
+		}
 
-	return
+		return c.m[key], true
+	}
+
+	return nil, false
+
+	// TODO: add option for recursive searches
 }
 
 func (c *ciMap) UnmarshalYAML(value *yaml.Node) error {
-	m := make(map[string]interface{})
-
-	err := value.Decode(&m)
-	if err != nil {
-		return err
-	}
-
-	for key, val := range m {
-		c.m[strings.ToLower(key)] = val
-	}
-
-	return nil
+	return value.Decode(&c.m)
 }
 
 func (c *ciMap) UnmarshalJSON(bytes []byte) error {
-	m := make(map[string]interface{})
-
-	err := json.Unmarshal(bytes, &m)
-	if err != nil {
-		return err
-	}
-
-	for key, val := range m {
-		c.m[strings.ToLower(key)] = val
-	}
-
-	return nil
+	return json.Unmarshal(bytes, &c.m)
 }
