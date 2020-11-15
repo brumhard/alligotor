@@ -7,6 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const separator = "."
+
 type ciMap struct {
 	m map[string]interface{}
 }
@@ -20,18 +22,34 @@ func (c ciMap) Set(s string, b bool) {
 }
 
 func (c ciMap) Get(s string) (b interface{}, ok bool) {
-	// go through map keys and check if key.ToLower() matches, s.ToLower()
+	substr := strings.Split(s, separator)
+	field := substr[0]
+
+	// go through map keys and check if key.ToLower() matches, field.ToLower()
 	for key := range c.m {
-		if !strings.EqualFold(key, s) {
+		if !strings.EqualFold(key, field) {
 			continue
 		}
 
-		return c.m[key], true
+		val := c.m[field]
+
+		if len(substr) == 1 {
+			// no separator in the string -> reached end of search string
+			return val, true
+		}
+
+		// iterate further through nested fields
+		valAsMap, ok := val.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+
+		nestedCiMap := ciMap{m: valAsMap}
+
+		return nestedCiMap.Get(strings.Join(substr[1:], separator))
 	}
 
 	return nil, false
-
-	// TODO: add option for recursive searches
 }
 
 func (c *ciMap) UnmarshalYAML(value *yaml.Node) error {
