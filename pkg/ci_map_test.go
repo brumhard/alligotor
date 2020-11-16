@@ -14,16 +14,24 @@ func Test_ciMap_Get(t *testing.T) {
 	"test": {
 		"innertest": "arrrr",
 		"innertest2": "pirate"
-	}
+	},
+	"test2": "idk"
 }`)
 
+	// nested
 	ciMap := &ciMap{}
 	r.NoError(json.Unmarshal(jsonString, ciMap))
 	val, ok := ciMap.Get("test" + separator + "innertest")
 	r.True(ok)
 	r.Equal("arrrr", val)
 
-	val2, ok := ciMap.Get("test" + separator + "innertest2")
+	// case insensitive
+	val2, ok := ciMap.Get("test" + separator + "INNERTEST2")
 	r.True(ok)
 	r.Equal("pirate", val2)
+
+	// in root
+	val3, ok := ciMap.Get("TEST2")
+	r.True(ok)
+	r.Equal("idk", val3)
 }

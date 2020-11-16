@@ -146,7 +146,6 @@ func (c *Collector) readFiles(fields []*Field) error {
 		}
 
 		for _, fileInfo := range fileInfos {
-			// TODO: what to do when multiple matching files are found e.g. config.yml & config.json
 			name := fileInfo.Name()
 			if strings.TrimSuffix(name, path.Ext(name)) != c.Files.BaseName {
 				continue

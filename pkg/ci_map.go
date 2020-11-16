@@ -23,15 +23,14 @@ func (c ciMap) Set(s string, b bool) {
 
 func (c ciMap) Get(s string) (b interface{}, ok bool) {
 	substr := strings.Split(s, separator)
-	field := substr[0]
 
 	// go through map keys and check if key.ToLower() matches, field.ToLower()
 	for key := range c.m {
-		if !strings.EqualFold(key, field) {
+		if !strings.EqualFold(key, substr[0]) {
 			continue
 		}
 
-		val := c.m[field]
+		val := c.m[key]
 
 		if len(substr) == 1 {
 			// no separator in the string -> reached end of search string
