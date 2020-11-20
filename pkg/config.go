@@ -29,18 +29,42 @@ const (
 	envKey  = "env"
 	flagKey = "flag"
 	fileKey = "file"
+
+	defaultEnvSeparator  = "_"
+	defaultFileSeparator = "."
+	defaultFlagSeparator = "."
 )
 
+// TODO: actually use Disabled flags
 type Collector struct {
-	Files ConfigFiles
-	// TODO: add env prefix
-	Env   bool
-	Flags bool
+	Files FilesConfig
+	Env   EnvConfig
+	Flags FlagsConfig
 }
 
-type ConfigFiles struct {
+type FilesConfig struct {
 	Locations []string
 	BaseName  string
+	Separator string
+	Disabled  bool
+}
+
+type EnvConfig struct {
+	Prefix    string
+	Separator string
+	Disabled  bool
+}
+
+type FlagsConfig struct {
+	Separator string
+	Disabled  bool
+}
+
+type Field struct {
+	Base   []string
+	Name   string
+	Value  reflect.Value
+	Config ParameterConfig
 }
 
 type ParameterConfig struct {
@@ -54,12 +78,6 @@ type Flag struct {
 	ShortName string
 }
 
-type Field struct {
-	Name   string
-	Value  reflect.Value
-	Config ParameterConfig
-}
-
 func (c *Collector) Get(v interface{}) error {
 	// TODO: add support for nested structs
 	value := reflect.ValueOf(v)
@@ -70,27 +88,9 @@ func (c *Collector) Get(v interface{}) error {
 	// collect info about fields with tags, value...
 	t := reflect.Indirect(value)
 
-	var fields []*Field
-
-	for i := 0; i < t.NumField(); i++ {
-		configStr := t.Type().Field(i).Tag.Get(tag)
-
-		fieldConfig := ParameterConfig{}
-
-		if configStr != "" {
-			var err error
-
-			fieldConfig, err = readFieldConfig(configStr)
-			if err != nil {
-				return err
-			}
-		}
-
-		fields = append(fields, &Field{
-			Name:   t.Type().Field(i).Name,
-			Value:  t.Field(i),
-			Config: fieldConfig,
-		})
+	fields, err := getFieldsConfigsFromValue(t)
+	if err != nil {
+		return err
 	}
 
 	// read files
@@ -109,6 +109,46 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	return nil
+}
+
+func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, error) {
+	var fields []*Field
+
+	for i := 0; i < value.NumField(); i++ {
+		fieldType := value.Type().Field(i)
+		fieldValue := value.Field(i)
+		configStr := fieldType.Tag.Get(tag)
+
+		fieldConfig := ParameterConfig{}
+
+		if configStr != "" {
+			var err error
+
+			fieldConfig, err = readFieldConfig(configStr)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		fields = append(fields, &Field{
+			Base:   base,
+			Name:   fieldType.Name,
+			Value:  fieldValue,
+			Config: fieldConfig,
+		})
+
+		if fieldValue.Kind() == reflect.Struct {
+			newBase := append(base, fieldType.Name)
+			subFields, err := getFieldsConfigsFromValue(fieldValue, newBase...)
+			if err != nil {
+				return nil, err
+			}
+
+			fields = append(fields, subFields...)
+		}
+	}
+
+	return fields, nil
 }
 
 func readFieldConfig(configStr string) (ParameterConfig, error) {

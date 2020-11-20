@@ -24,12 +24,10 @@ func TestCollector(t *testing.T) {
 	}
 
 	config := Collector{
-		Files: ConfigFiles{
+		Files: FilesConfig{
 			Locations: []string{},
 			BaseName:  "config",
 		},
-		Env:   false,
-		Flags: false,
 	}
 
 	// initial values are kept if not overwritten
@@ -82,9 +80,7 @@ func TestCollector_Env_UnmarshalText(t *testing.T) {
 		SomeThing: testType{},
 	}
 
-	config := Collector{
-		Env: true,
-	}
+	config := Collector{}
 
 	r.NoError(os.Setenv("SOMETHING", "l,t,l"))
 	r.NoError(config.Get(&testStruct))
@@ -102,7 +98,7 @@ func TestCollector_File_Overwrite(t *testing.T) {
 	}
 
 	config := Collector{
-		Files: ConfigFiles{
+		Files: FilesConfig{
 			Locations: []string{},
 			BaseName:  "config",
 		},
@@ -127,7 +123,7 @@ func TestCollector_File_Nested(t *testing.T) {
 	}{}
 
 	config := Collector{
-		Files: ConfigFiles{
+		Files: FilesConfig{
 			BaseName: "config",
 		},
 	}
@@ -146,6 +142,35 @@ func TestCollector_File_Nested(t *testing.T) {
 	r.Equal(4000, testStruct.Sub.Port)
 }
 
+func TestCollector_File_Nested_Overwrite(t *testing.T) {
+	r := require.New(t)
+
+	testStruct := struct {
+		Sub struct {
+			Port int `config:"file=PORT"`
+		}
+	}{}
+
+	config := Collector{
+		Files: FilesConfig{
+			BaseName: "config",
+		},
+	}
+
+	// read config from json file
+	tempDir := t.TempDir()
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
+	config.Files.Locations = []string{tempDir}
+
+	r.NoError(config.Get(&testStruct))
+	r.Equal(4000, testStruct.Sub.Port)
+
+	// nested
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}}`), 0600))
+	r.NoError(config.Get(&testStruct))
+	r.NotEqual(4000, testStruct.Sub.Port)
+}
+
 func TestCollector_Get_Env(t *testing.T) {
 	r := require.New(t)
 
@@ -153,9 +178,7 @@ func TestCollector_Get_Env(t *testing.T) {
 		Port int
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// short name flag
 	// read env, overwrites files
@@ -173,9 +196,7 @@ func TestCollector_Get_Env_Nested(t *testing.T) {
 		}
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// short name flag
 	// read env, overwrites files
@@ -195,9 +216,7 @@ func TestCollector_Get_Env_Overwrite(t *testing.T) {
 		Port int `config:"env=PORT"`
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// short name flag
 	// read env, overwrites files
@@ -213,9 +232,7 @@ func TestCollector_Get_Flags(t *testing.T) {
 		Port int
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// short name flag
 	os.Args = []string{"commandName", "-p", "1234"}
@@ -238,9 +255,7 @@ func TestCollector_Get_Nested(t *testing.T) {
 		}
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// short name flag
 	os.Args = []string{"commandName", "-p", "1234"}
@@ -266,9 +281,7 @@ func TestCollector_Get_Flags_Overwrite(t *testing.T) {
 		Port int `config:"flag=whaaaat w"`
 	}{}
 
-	config := Collector{
-		Flags: true,
-	}
+	config := Collector{}
 
 	// default name flag
 	os.Args = []string{"commandName", "--port", "4567"}
