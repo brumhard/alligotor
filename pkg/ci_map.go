@@ -7,14 +7,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const separator = "."
+const defaultSeparator = "."
 
 type ciMap struct {
-	m map[string]interface{}
+	m         map[string]interface{}
+	separator string
 }
 
-func newCiMap() *ciMap {
-	return &ciMap{m: make(map[string]interface{})}
+type MapOption func(*ciMap)
+
+func WithSeparator(separator string) MapOption {
+	return func(c *ciMap) {
+		c.separator = separator
+	}
+}
+
+func newCiMap(options ...MapOption) *ciMap {
+	newMap := &ciMap{m: make(map[string]interface{})}
+
+	for _, opt := range options {
+		opt(newMap)
+	}
+
+	if newMap.separator == "" {
+		newMap.separator = defaultSeparator
+	}
+
+	return newMap
 }
 
 func (c ciMap) Set(s string, b bool) {
@@ -22,7 +41,7 @@ func (c ciMap) Set(s string, b bool) {
 }
 
 func (c ciMap) Get(s string) (b interface{}, ok bool) {
-	substr := strings.Split(s, separator)
+	substr := strings.Split(s, c.separator)
 
 	// go through map keys and check if key.ToLower() matches, field.ToLower()
 	for key := range c.m {
@@ -43,9 +62,9 @@ func (c ciMap) Get(s string) (b interface{}, ok bool) {
 			return nil, false
 		}
 
-		nestedCiMap := ciMap{m: valAsMap}
+		nestedCiMap := ciMap{m: valAsMap, separator: c.separator}
 
-		return nestedCiMap.Get(strings.Join(substr[1:], separator))
+		return nestedCiMap.Get(strings.Join(substr[1:], c.separator))
 	}
 
 	return nil, false
