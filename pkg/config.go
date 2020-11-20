@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -31,6 +33,7 @@ const (
 
 type Collector struct {
 	Files ConfigFiles
+	// TODO: add env prefix
 	Env   bool
 	Flags bool
 }
@@ -168,7 +171,14 @@ func (c *Collector) readFiles(fields []*Field) error {
 				}
 
 				if valueForField, ok := m.Get(fieldName); ok {
-					f.Value.Set(reflect.ValueOf(valueForField))
+					fieldTypeZero := reflect.Zero(f.Value.Type())
+					v := fieldTypeZero.Interface()
+
+					if err := mapstructure.Decode(valueForField, &v); err != nil {
+						return err
+					}
+
+					f.Value.Set(reflect.ValueOf(v))
 				}
 			}
 		}

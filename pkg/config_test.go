@@ -134,14 +134,14 @@ func TestCollector_File_Nested(t *testing.T) {
 
 	// read config from json file
 	tempDir := t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"overwrite": 4000}`), 0600))
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
 	config.Files.Locations = []string{tempDir}
 
 	r.NoError(config.Get(&testStruct))
 	r.NotEqual(4000, testStruct.Sub.Port)
 
 	// nested
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {overwrite": 4000}}`), 0600))
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}}`), 0600))
 	r.NoError(config.Get(&testStruct))
 	r.Equal(4000, testStruct.Sub.Port)
 }
