@@ -32,9 +32,13 @@ const (
 
 	defaultEnvSeparator  = "_"
 	defaultFileSeparator = "."
-	defaultFlagSeparator = "."
+	defaultFlagSeparator = "-"
 )
 
+// TODO: check support for embedded structs
+// TODO: clean up linting issues
+// TODO: rework to ginkgo tests
+// TODO: add support for concurrent tests
 // TODO: actually use Disabled flags
 type Collector struct {
 	Files FilesConfig
@@ -67,6 +71,10 @@ type Field struct {
 	Config ParameterConfig
 }
 
+func (f *Field) FullName(separator string) string {
+	return strings.Join(append(f.Base, f.Name), separator)
+}
+
 type ParameterConfig struct {
 	FileField string
 	EnvName   string
@@ -79,7 +87,6 @@ type Flag struct {
 }
 
 func (c *Collector) Get(v interface{}) error {
-	// TODO: add support for nested structs
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Ptr {
 		return ErrPointerExpected
@@ -199,7 +206,7 @@ func (c *Collector) readFiles(fields []*Field) error {
 				return err
 			}
 
-			m, err := unmarshal(fileBytes)
+			m, err := unmarshal(c.Files.Separator, fileBytes)
 			if err != nil {
 				return err
 			}
@@ -207,19 +214,22 @@ func (c *Collector) readFiles(fields []*Field) error {
 			for _, f := range fields {
 				fieldName := f.Config.FileField
 				if fieldName == "" {
-					fieldName = f.Name
+					fieldName = f.FullName(c.Files.Separator)
 				}
 
-				if valueForField, ok := m.Get(fieldName); ok {
-					fieldTypeZero := reflect.Zero(f.Value.Type())
-					v := fieldTypeZero.Interface()
+				valueForField, ok := m.Get(fieldName)
+				fieldTypeZero := reflect.Zero(f.Value.Type())
+				v := fieldTypeZero.Interface()
 
+				// if value is set, set it, otherwise overwrite with zero value
+				// this is to protect values that are set by parent struct but have an overwrite set
+				if ok {
 					if err := mapstructure.Decode(valueForField, &v); err != nil {
 						return err
 					}
-
-					f.Value.Set(reflect.ValueOf(v))
 				}
+
+				f.Value.Set(reflect.ValueOf(v))
 			}
 		}
 	}
@@ -231,7 +241,7 @@ func (c *Collector) readEnv(fields []*Field) error {
 	for _, f := range fields {
 		envName := f.Config.EnvName
 		if envName == "" {
-			envName = strings.ToUpper(f.Name)
+			envName = strings.ToUpper(f.FullName(c.Env.Separator))
 		}
 
 		if envVal, ok := os.LookupEnv(envName); ok {
@@ -254,9 +264,9 @@ func (c *Collector) readPFlags(fields []*Field) error {
 	fieldToFlagInfo := make(map[*Field]flagInfo)
 
 	for _, f := range fields {
-		longName := strings.ToLower(f.Name)
-		if f.Config.Flag.Name != "" {
-			longName = f.Config.Flag.Name
+		longName := f.Config.Flag.Name
+		if longName == "" {
+			longName = strings.ToLower(f.FullName(c.Flags.Separator))
 		}
 
 		shortName := ""
@@ -323,8 +333,8 @@ func setFromString(target reflect.Value, value string) (err error) {
 	return nil
 }
 
-func unmarshal(bytes []byte) (*ciMap, error) {
-	m := newCiMap()
+func unmarshal(fileSeperator string, bytes []byte) (*ciMap, error) {
+	m := newCiMap(WithSeparator(fileSeperator))
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
 	}

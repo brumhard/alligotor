@@ -124,7 +124,8 @@ func TestCollector_File_Nested(t *testing.T) {
 
 	config := Collector{
 		Files: FilesConfig{
-			BaseName: "config",
+			BaseName:  "config",
+			Separator: "::",
 		},
 	}
 
@@ -157,18 +158,18 @@ func TestCollector_File_Nested_Overwrite(t *testing.T) {
 		},
 	}
 
-	// read config from json file
+	// nested
 	tempDir := t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
 	config.Files.Locations = []string{tempDir}
 
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Sub.Port)
-
-	// nested
 	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}}`), 0600))
 	r.NoError(config.Get(&testStruct))
 	r.NotEqual(4000, testStruct.Sub.Port)
+
+	// overwrite
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
+	r.NoError(config.Get(&testStruct))
+	r.Equal(4000, testStruct.Sub.Port)
 }
 
 func TestCollector_Get_Env(t *testing.T) {
@@ -196,7 +197,9 @@ func TestCollector_Get_Env_Nested(t *testing.T) {
 		}
 	}{}
 
-	config := Collector{}
+	config := Collector{
+		Env: EnvConfig{Separator: "_"},
+	}
 
 	// short name flag
 	// read env, overwrites files
@@ -255,7 +258,9 @@ func TestCollector_Get_Nested(t *testing.T) {
 		}
 	}{}
 
-	config := Collector{}
+	config := Collector{
+		Flags: FlagsConfig{Separator: "-"},
+	}
 
 	// short name flag
 	os.Args = []string{"commandName", "-p", "1234"}
@@ -268,7 +273,7 @@ func TestCollector_Get_Nested(t *testing.T) {
 	r.Error(config.Get(&testStruct))
 
 	// nested full name
-	os.Args = []string{"commandName", "--sub.port", "8910"}
+	os.Args = []string{"commandName", "--sub-port", "8910"}
 
 	r.NoError(config.Get(&testStruct))
 	r.Equal(8910, testStruct.Sub.Port)
