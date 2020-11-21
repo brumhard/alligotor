@@ -125,7 +125,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
 		fieldValue := value.Field(i)
-		fieldConfig, err := readFieldConfig(fieldType.Tag.Get(tag))
+		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(tag))
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 	return fields, nil
 }
 
-func readFieldConfig(configStr string) (ParameterConfig, error) {
+func readParameterConfig(configStr string) (ParameterConfig, error) {
 	fieldConfig := ParameterConfig{}
 
 	if configStr == "" {

@@ -406,18 +406,18 @@ test:
 			Expect(testingVal).To(Equal("lel=lol,arr=lul"))
 		})
 	})
-	Describe("readFieldConfig", func() {
+	Describe("readParameterConfig", func() {
 		It("returns empty ParameterConfig if configStr is empty", func() {
-			p, err := readFieldConfig("")
+			p, err := readParameterConfig("")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(p).To(Equal(ParameterConfig{}))
 		})
 		It("panic if configStr hast invalid format", func() {
-			Expect(func() { _, _ = readFieldConfig("file=") }).To(Panic())
-			Expect(func() { _, _ = readFieldConfig("env") }).To(Panic())
+			Expect(func() { _, _ = readParameterConfig("file=") }).To(Panic())
+			Expect(func() { _, _ = readParameterConfig("env") }).To(Panic())
 		})
 		It("works with valid format configStr, allows whitespace", func() {
-			p, err := readFieldConfig("file=val,env=val,flag=l long")
+			p, err := readParameterConfig("file=val,env=val,flag=l long")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(p).To(Equal(ParameterConfig{
 				FileField: "val",
@@ -429,7 +429,9 @@ test:
 			}))
 		})
 	})
-	Describe("getFieldsConfigsFromValue", func() {})
+	Describe("getFieldsConfigsFromValue", func() {
+
+	})
 	Describe("Collector", func() {
 		Describe("Get", func() {})
 	})
