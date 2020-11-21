@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -30,15 +31,16 @@ const (
 	flagKey = "flag"
 	fileKey = "file"
 
+	flagConfigSeparator = " "
+
 	defaultEnvSeparator  = "_"
 	defaultFileSeparator = "."
 	defaultFlagSeparator = "-"
 )
 
 // TODO: check support for embedded structs
+// TODO: check support for pointer properties
 // TODO: clean up linting issues
-// TODO: rework to ginkgo tests
-// TODO: add support for concurrent tests
 // TODO: actually use Disabled flags
 type Collector struct {
 	Files FilesConfig
@@ -163,7 +165,7 @@ func readFieldConfig(configStr string) (ParameterConfig, error) {
 	fieldConfig := ParameterConfig{}
 
 	for _, paramStr := range strings.Split(configStr, ",") {
-		keyVal := strings.Split(paramStr, "=")
+		keyVal := strings.SplitN(paramStr, "=", 2)
 		if len(keyVal) != 2 {
 			panic("invalid config struct tag format")
 		}
@@ -314,14 +316,21 @@ func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 	return nil
 }
 
-var ErrInvalidType = errors.New("invalid type")
+var (
+	ErrUnsupportedType = errors.New("invalid type")
+	ErrCantSet         = errors.New("can't set value")
+)
 
 func setFromString(target reflect.Value, value string) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = ErrInvalidType
+			err = ErrUnsupportedType
 		}
 	}()
+
+	if !target.CanSet() {
+		return ErrCantSet
+	}
 
 	if value == "" {
 		zeroValue := reflect.Zero(target.Type())
@@ -330,28 +339,79 @@ func setFromString(target reflect.Value, value string) (err error) {
 		return nil
 	}
 
-	switch target.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	var valToSet interface{}
+
+	switch target.Interface().(type) {
+	case int, int8, int16, int32, int64:
 		intVal, err := strconv.ParseInt(value, 10, 0)
 		if err != nil {
 			return err
 		}
 
 		target.SetInt(intVal)
-	case reflect.String:
-		target.SetString(value)
-		// TODO: add support for bool and other reflect types
-	default:
-		if textMarshal, ok := target.Interface().(encoding.TextUnmarshaler); ok {
-			return textMarshal.UnmarshalText([]byte(value))
-		}
-		// check if Addr is possible with CanAddr
-		if textMarshal, ok := target.Addr().Interface().(encoding.TextUnmarshaler); ok {
-			return textMarshal.UnmarshalText([]byte(value))
+
+		return nil
+	case complex64, complex128:
+		complexVal, err := strconv.ParseComplex(value, 0)
+		if err != nil {
+			return err
 		}
 
-		target.Set(reflect.ValueOf(value))
+		target.SetComplex(complexVal)
+
+		return nil
+	case uint, uint8, uint16, uint32, uint64:
+		uintVal, err := strconv.ParseUint(value, 10, 0)
+		if err != nil {
+			return err
+		}
+
+		target.SetUint(uintVal)
+
+		return nil
+	case float32, float64:
+		floatVal, err := strconv.ParseFloat(value, 0)
+		if err != nil {
+			return err
+		}
+
+		target.SetFloat(floatVal)
+
+		return nil
+	case time.Duration:
+		valToSet, err = time.ParseDuration(value)
+	case time.Time:
+		valToSet, err = time.Parse(time.RFC3339, value)
+	case bool:
+		valToSet, err = strconv.ParseBool(value)
+	case string:
+		valToSet = value
+	case []string:
+		strSlice := stringSlice{}
+		_ = strSlice.UnmarshalText([]byte(value))
+
+		valToSet = []string(strSlice)
+	case map[string]string:
+		strMap := stringMap{}
+		_ = strMap.UnmarshalText([]byte(value))
+
+		valToSet = map[string]string(strMap)
+	case encoding.TextUnmarshaler:
+		return target.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value))
+	default:
+		// check if Addr implements TextUnmarshaler interface
+		if t, ok := target.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			return t.UnmarshalText([]byte(value))
+		}
+
+		valToSet = value
 	}
+
+	if err != nil {
+		return err
+	}
+
+	target.Set(reflect.ValueOf(valToSet))
 
 	return nil
 }
@@ -371,19 +431,62 @@ func unmarshal(fileSeperator string, bytes []byte) (*ciMap, error) {
 
 func readFlagConfig(flagStr string) (Flag, error) {
 	flagConf := Flag{}
-	flags := strings.Split(flagStr, " ")
+	flags := strings.Split(flagStr, flagConfigSeparator)
 
 	if len(flags) > 2 {
 		return Flag{}, ErrMalformedFlagConfig
 	}
 
 	for _, flag := range flags {
-		if len(flag) == 1 {
+		if len([]rune(flag)) == 1 {
+			if flagConf.ShortName != "" {
+				return Flag{}, ErrMalformedFlagConfig
+			}
+
 			flagConf.ShortName = flag
 		} else {
+			if flagConf.Name != "" {
+				return Flag{}, ErrMalformedFlagConfig
+			}
+
 			flagConf.Name = flag
 		}
 	}
 
 	return flagConf, nil
+}
+
+type stringMap map[string]string
+
+func (m stringMap) UnmarshalText(text []byte) error {
+	keyVals := stringSlice{}
+	_ = keyVals.UnmarshalText(text)
+
+	for _, keyVal := range keyVals {
+		split := strings.SplitN(keyVal, "=", 2)
+		m[split[0]] = split[1]
+	}
+
+	return nil
+}
+
+func (m stringMap) MarshalText() ([]byte, error) {
+	keyVals := make([]string, 0, len(m))
+	for k, v := range m {
+		keyVals = append(keyVals, strings.Join([]string{k, v}, "="))
+	}
+
+	return stringSlice(keyVals).MarshalText()
+}
+
+type stringSlice []string
+
+func (s *stringSlice) UnmarshalText(text []byte) error {
+	*s = append(*s, strings.Split(string(text), ",")...)
+
+	return nil
+}
+
+func (s stringSlice) MarshalText() ([]byte, error) {
+	return []byte(strings.Join(s, ",")), nil
 }

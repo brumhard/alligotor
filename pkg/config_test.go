@@ -1,307 +1,188 @@
 package pkg
 
 import (
-	"io/ioutil"
-	"os"
-	"strings"
-	"testing"
+	"reflect"
+	"time"
 
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestCollector(t *testing.T) {
-	r := require.New(t)
+var _ = Describe("config", func() {
+	Describe("readFlagConfig", func() {
+		Context("invalid input", func() {
+			It("should return err on more than 3 sets", func() {
+				_, err := readFlagConfig("a b c")
+				Expect(err).Should(HaveOccurred())
+				Expect(err).To(Equal(ErrMalformedFlagConfig))
+			})
+			It("should return error if longname has less than 2 letters", func() {
+				for _, configStr := range []string{"a b", "long long"} {
+					_, err := readFlagConfig(configStr)
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(Equal(ErrMalformedFlagConfig))
+				}
+			})
+		})
+		Context("valid input", func() {
+			It("should return valid flag when short and long are set", func() {
+				for _, configStr := range []string{"a awd", "awd a"} {
+					flag, err := readFlagConfig(configStr)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(flag).To(Equal(Flag{ShortName: "a", Name: "awd"}))
+				}
+			})
+			It("should return valid flag when only short is set", func() {
+				flag, err := readFlagConfig("a")
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(flag).To(Equal(Flag{ShortName: "a", Name: ""}))
+			})
+			It("should return valid flag when only long is set", func() {
+				flag, err := readFlagConfig("awd")
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(flag).To(Equal(Flag{ShortName: "", Name: "awd"}))
+			})
+		})
+	})
 
-	// options:
-	// - file=x overwrites default path to variable in file
-	// - env=x overwrites default environment variable name to be used
-	// - flag=x xy sets the flag names that should be used
-	testStruct := struct {
-		Port      int `config:"file=PORT,env=PORT,flag=port p"`
-		Something string
-	}{
-		Port: 8080,
-	}
+	Describe("unmarshal", func() {
+		expectedMap := map[string]interface{}{
+			"test": map[string]interface{}{"sub": "lel"},
+		}
 
-	config := Collector{
-		Files: FilesConfig{
-			Locations: []string{},
-			BaseName:  "config",
-		},
-	}
+		Context("yaml", func() {
+			It("should succeed with valid input", func() {
+				yamlBytes := []byte(`---
+test:
+  sub: lel
+`)
+				yamlMap, err := unmarshal(defaultFileSeparator, yamlBytes)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(yamlMap.m).To(Equal(expectedMap))
+			})
+		})
+		Context("json", func() {
+			It("should succeed with valid input", func() {
+				jsonBytes := []byte(`{"test": {"sub": "lel"}}`)
+				jsonMap, err := unmarshal(defaultFileSeparator, jsonBytes)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(jsonMap.m).To(Equal(expectedMap))
+			})
+		})
+		Context("not supported", func() {
+			It("should fail with random input", func() {
+				randomBytes := []byte("i don't know what I'm doing here")
+				_, err := unmarshal(defaultFileSeparator, randomBytes)
+				Expect(err).Should(HaveOccurred())
+				Expect(err).To(Equal(ErrFileTypeNotSupported))
+			})
+		})
+	})
 
-	// initial values are kept if not overwritten
-	r.NoError(config.Get(&testStruct))
-	r.Equal(8080, testStruct.Port)
+	Describe("setFromString", func() {
+		It("sets anything to zero value if input is empty string", func() {
+			target := &struct{ V testType }{testType{S: "testing"}}
+			Expect(setFromString(WrappedValue(target), "")).To(Succeed())
+			Expect(target.V).To(Equal(testType{}))
+		})
+		It("sets durations correctly", func() {
+			target := &struct{ V time.Duration }{}
+			Expect(setFromString(WrappedValue(target), "2s")).To(Succeed())
+			Expect(target.V).To(Equal(2 * time.Second))
+		})
+		It("sets dates correctly", func() {
+			target := &struct{ V time.Time }{}
+			Expect(setFromString(WrappedValue(target), "2007-01-02T15:04:05Z")).To(Succeed())
+			Expect(target.V).To(BeEquivalentTo(time.Date(2007, 1, 2, 15, 4, 5, 0, time.UTC)))
+		})
+		It("sets int types correctly", func() {
+			target := &struct{ V int }{}
+			Expect(setFromString(WrappedValue(target), "69")).To(Succeed())
+			Expect(target.V).To(Equal(69))
+		})
+		It("sets booleans correctly", func() {
+			target := &struct{ V bool }{}
+			Expect(setFromString(WrappedValue(target), "true")).To(Succeed())
+			Expect(target.V).To(Equal(true))
+		})
+		It("sets complex types correctly", func() {
+			target := &struct{ V complex128 }{}
+			Expect(setFromString(WrappedValue(target), "2+3i")).To(Succeed())
+			Expect(target.V).To(Equal(complex(2, 3)))
+		})
+		It("sets uint types correctly", func() {
+			target := &struct{ V uint }{}
+			Expect(setFromString(WrappedValue(target), "420")).To(Succeed())
+			Expect(target.V).To(Equal(uint(420)))
+		})
+		It("sets float types correctly", func() {
+			target := &struct{ V float64 }{}
+			Expect(setFromString(WrappedValue(target), "2.34")).To(Succeed())
+			Expect(target.V).To(Equal(2.34))
+		})
+		It("sets strings correctly", func() {
+			target := &struct{ V string }{}
+			Expect(setFromString(WrappedValue(target), "whoop")).To(Succeed())
+			Expect(target.V).To(Equal("whoop"))
+		})
+		It("sets []string correctly", func() {
+			target := &struct{ V []string }{}
+			Expect(setFromString(WrappedValue(target), "wow,insane")).To(Succeed())
+			Expect(target.V).To(Equal([]string{"wow", "insane"}))
+		})
+		It("sets map[string]string correctly", func() {
+			target := &struct{ V map[string]string }{}
+			Expect(setFromString(WrappedValue(target), "wow=insane")).To(Succeed())
+			Expect(target.V).To(Equal(map[string]string{"wow": "insane"}))
+		})
+		It("sets TextUnmarshaler correctly", func() {
+			target := &struct{ V testType }{}
+			Expect(setFromString(WrappedValue(target), "mmh")).To(Succeed())
+			Expect(target.V).To(Equal(testType{S: "mmh"}))
+		})
+	})
 
-	// read config from yaml file
-	tempDir := t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.yml", []byte("port: 4000"), 0600))
-	config.Files.Locations = []string{tempDir}
+	Describe("readPFlags", func() {
 
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Port)
+	})
 
-	// read config from json file, case insensitive
-	tempDir = t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte("{\"PORT\": 4000}"), 0600))
-	config.Files.Locations = []string{tempDir}
+	Describe("readEnv", func() {
 
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Port)
+	})
 
-	// read env, overwrites files
-	r.NoError(os.Setenv("PORT", "5000"))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(5000, testStruct.Port)
+	Describe("getEnvAsMap", func() {
 
-	// read flag, overwrites files
-	os.Args = []string{"commandName", "-p", "1234"}
-	r.NoError(config.Get(&testStruct))
-	r.Equal(1234, testStruct.Port)
+	})
+
+	Describe("readFiles", func() {
+
+	})
+
+	Describe("readFieldConfig", func() {
+
+	})
+
+	Describe("getFieldsConfigsFromValue", func() {
+
+	})
+
+	Describe("Collector", func() {
+		Describe("Get", func() {
+
+		})
+	})
+})
+
+func WrappedValue(val interface{}) reflect.Value {
+	return reflect.ValueOf(val).Elem().Field(0)
 }
 
 type testType struct {
-	S []string
+	S string
 }
 
 func (t *testType) UnmarshalText(text []byte) error {
-	t.S = strings.Split(string(text), ",")
+	t.S = string(text)
 
 	return nil
-}
-
-func TestCollector_Env_UnmarshalText(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		SomeThing testType `config:"env=SOMETHING"`
-	}{
-		SomeThing: testType{},
-	}
-
-	config := Collector{}
-
-	r.NoError(os.Setenv("SOMETHING", "l,t,l"))
-	r.NoError(config.Get(&testStruct))
-	r.Equal([]string{"l", "t", "l"}, testStruct.SomeThing.S)
-}
-
-func TestCollector_File_Overwrite(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Port      int `config:"file=OVERWRITE"`
-		Something string
-	}{
-		Port: 8080,
-	}
-
-	config := Collector{
-		Files: FilesConfig{
-			Locations: []string{},
-			BaseName:  "config",
-		},
-	}
-
-	// read config from yaml file
-	tempDir := t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.yml", []byte("overwrite: 4000"), 0600))
-	config.Files.Locations = []string{tempDir}
-
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Port)
-}
-
-func TestCollector_File_Nested(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Sub struct {
-			Port int
-		}
-	}{}
-
-	config := Collector{
-		Files: FilesConfig{
-			BaseName:  "config",
-			Separator: "::",
-		},
-	}
-
-	// read config from json file
-	tempDir := t.TempDir()
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
-	config.Files.Locations = []string{tempDir}
-
-	r.NoError(config.Get(&testStruct))
-	r.NotEqual(4000, testStruct.Sub.Port)
-
-	// nested
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}}`), 0600))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Sub.Port)
-}
-
-func TestCollector_File_Nested_Overwrite(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Sub struct {
-			Port int `config:"file=PORT"`
-		}
-	}{}
-
-	config := Collector{
-		Files: FilesConfig{
-			BaseName: "config",
-		},
-	}
-
-	// nested
-	tempDir := t.TempDir()
-	config.Files.Locations = []string{tempDir}
-
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}, "port": 0}`), 0600))
-	r.NoError(config.Get(&testStruct))
-	r.NotEqual(4000, testStruct.Sub.Port)
-
-	// overwrite
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"port": 4000}`), 0600))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4000, testStruct.Sub.Port)
-}
-
-func TestCollector_Get_Env(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Port int
-	}{}
-
-	config := Collector{}
-
-	// short name flag
-	// read env, overwrites files
-	r.NoError(os.Setenv("PORT", "5000"))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(5000, testStruct.Port)
-}
-
-func TestCollector_Get_Env_Nested(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Sub struct {
-			Port int
-		}
-	}{}
-
-	config := Collector{
-		Env: EnvConfig{Separator: "_"},
-	}
-
-	// short name flag
-	// read env, overwrites files
-	r.NoError(os.Setenv("PORT", "5000"))
-	r.NoError(config.Get(&testStruct))
-	r.NotEqual(5000, testStruct.Sub.Port)
-
-	r.NoError(os.Setenv("SUB_PORT", "5000"))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(5000, testStruct.Sub.Port)
-}
-
-func TestCollector_Get_Env_Overwrite(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Port int `config:"env=PORT"`
-	}{}
-
-	config := Collector{}
-
-	// short name flag
-	// read env, overwrites files
-	r.NoError(os.Setenv("PORT", "5000"))
-	r.NoError(config.Get(&testStruct))
-	r.Equal(5000, testStruct.Port)
-}
-
-func TestCollector_Get_Flags(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Port int
-	}{}
-
-	config := Collector{}
-
-	// short name flag
-	os.Args = []string{"commandName", "-p", "1234"}
-
-	r.Error(config.Get(&testStruct))
-
-	// full name flag
-	os.Args = []string{"commandName", "--port", "4567"}
-
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4567, testStruct.Port)
-}
-
-func TestCollector_Get_Nested(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Sub struct {
-			Port int
-		}
-	}{}
-
-	config := Collector{
-		Flags: FlagsConfig{Separator: "-"},
-	}
-
-	// short name flag
-	os.Args = []string{"commandName", "-p", "1234"}
-
-	r.Error(config.Get(&testStruct))
-
-	// full name flag
-	os.Args = []string{"commandName", "--port", "4567"}
-
-	r.Error(config.Get(&testStruct))
-
-	// nested full name
-	os.Args = []string{"commandName", "--sub-port", "8910"}
-
-	r.NoError(config.Get(&testStruct))
-	r.Equal(8910, testStruct.Sub.Port)
-}
-
-func TestCollector_Get_Flags_Overwrite(t *testing.T) {
-	r := require.New(t)
-
-	testStruct := struct {
-		Port int `config:"flag=whaaaat w"`
-	}{}
-
-	config := Collector{}
-
-	// default name flag
-	os.Args = []string{"commandName", "--port", "4567"}
-
-	r.Error(config.Get(&testStruct))
-
-	// short name flag
-	os.Args = []string{"commandName", "-w", "1234"}
-
-	r.NoError(config.Get(&testStruct))
-	r.Equal(1234, testStruct.Port)
-
-	// full name flag
-	os.Args = []string{"commandName", "--whaaaat", "4567"}
-
-	r.NoError(config.Get(&testStruct))
-	r.Equal(4567, testStruct.Port)
 }
