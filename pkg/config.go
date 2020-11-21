@@ -287,10 +287,7 @@ func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 			longName = strings.ToLower(f.FullName(config.Separator))
 		}
 
-		shortName := ""
-		if f.Config.Flag.ShortName != "" {
-			shortName = f.Config.Flag.ShortName
-		}
+		shortName := f.Config.Flag.ShortName
 
 		fieldToFlagInfo[f] = flagInfo{
 			valueStr: flagSet.StringP(longName, shortName, "", "idk"),
