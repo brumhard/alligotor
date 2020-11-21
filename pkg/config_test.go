@@ -1,6 +1,9 @@
 package pkg
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"reflect"
 	"time"
 
@@ -230,7 +233,7 @@ test:
 					Disabled:  false,
 				}
 			})
-			It("uses uppercase name as default flag name", func() {
+			It("uses uppercase name as default env name", func() {
 				err := readEnv(fields, config, map[string]string{"PORT": "3000"})
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(target.V).To(Equal(3000))
@@ -280,7 +283,112 @@ test:
 				})
 			})
 		})
-		Describe("readFiles", func() {})
+
+		Context("files", func() {
+			separator := "."
+
+			Describe("readFiles", func() {
+				var config FilesConfig
+				var baseFileName string
+				var dir string
+				BeforeEach(func() {
+					var err error
+					dir, err = ioutil.TempDir("", "tests*")
+					Expect(err).ShouldNot(HaveOccurred())
+
+					baseFileName = "testing"
+					config = FilesConfig{
+						Locations: []string{dir},
+						BaseName:  baseFileName,
+						Separator: separator,
+						Disabled:  false,
+					}
+				})
+				AfterEach(func() {
+					Expect(os.RemoveAll(dir)).To(Succeed())
+				})
+				It("returns an error if no config file is found", func() {
+					err := readFiles(fields, config)
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(Equal(ErrNoFileFound))
+				})
+				It("supports yaml, uses name as default file field, ignores extension", func() {
+					yamlBytes := []byte(`port: 3000`)
+					Expect(ioutil.WriteFile(path.Join(dir, baseFileName+".yaml"), yamlBytes, 0600)).To(Succeed())
+
+					Expect(readFiles(fields, config)).To(Succeed())
+					Expect(target.V).To(Equal(3000))
+				})
+				It("supports json, uses name as default file field, ignores extension", func() {
+					jsonBytes := []byte(`{"port":3000}`)
+					Expect(ioutil.WriteFile(path.Join(dir, baseFileName), jsonBytes, 0600)).To(Succeed())
+
+					Expect(readFiles(fields, config)).To(Succeed())
+					Expect(target.V).To(Equal(3000))
+				})
+				It("is case insensitive", func() {
+					jsonBytes := []byte(`{"PORT":3000}`)
+					Expect(ioutil.WriteFile(path.Join(dir, baseFileName), jsonBytes, 0600)).To(Succeed())
+
+					Expect(readFiles(fields, config)).To(Succeed())
+					Expect(target.V).To(Equal(3000))
+				})
+			})
+
+			Describe("readFileMap", func() {
+				var m *ciMap
+				BeforeEach(func() {
+					m = &ciMap{separator: separator}
+				})
+				It("returns error if field is of wrong type", func() {
+					m.m = map[string]interface{}{"port": "1234"}
+
+					Expect(readFileMap(fields, separator, m)).NotTo(Succeed())
+				})
+				It("uses configured overwrite long name", func() {
+					fields[0].Config.FileField = "overwrite"
+					m.m = map[string]interface{}{"overwrite": 3000}
+
+					Expect(readFileMap(fields, separator, m)).To(Succeed())
+					Expect(target.V).To(Equal(3000))
+				})
+				It("doesn't overwrite with empty value if not set", func() {
+					target.V = 3000
+
+					Expect(readFileMap(fields, separator, m)).To(Succeed())
+					Expect(target.V).To(Equal(3000))
+				})
+				It("overwrites with empty value if set to empty", func() {
+					target.V = 3000
+					m.m = map[string]interface{}{"port": 0}
+
+					Expect(readFileMap(fields, separator, m)).To(Succeed())
+					Expect(target.V).To(Equal(0))
+				})
+				Context("nested", func() {
+					It("works", func() {
+						m.m = map[string]interface{}{"sub": map[string]interface{}{"port": 1234}}
+
+						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
+						Expect(nestedTarget.Sub.V).To(Equal(1234))
+					})
+					It("can be targeted with overwrite", func() {
+						nestedFields[0].Config.FileField = "sub.port"
+						m.m = map[string]interface{}{"sub": map[string]interface{}{"port": 1234}}
+
+						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
+						Expect(nestedTarget.Sub.V).To(Equal(1234))
+					})
+					It("can be overridden", func() {
+						nestedFields[0].Config.FileField = "over"
+						m.m = map[string]interface{}{"over": 1234}
+
+						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
+						Expect(nestedTarget.Sub.V).To(Equal(1234))
+					})
+				})
+			})
+		})
 	})
 	Describe("getEnvAsMap", func() {})
 	Describe("readFieldConfig", func() {})
@@ -304,12 +412,15 @@ func withNested() wrapOption {
 
 func wrappedValue(val interface{}, opts ...wrapOption) reflect.Value {
 	settings := &wrapSettings{}
+
 	for _, opt := range opts {
 		opt(settings)
 	}
+
 	if settings.nested {
 		return reflect.ValueOf(val).Elem().Field(0).Elem().Field(0)
 	}
+
 	return reflect.ValueOf(val).Elem().Field(0)
 }
 

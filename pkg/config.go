@@ -191,7 +191,10 @@ func readFieldConfig(configStr string) (ParameterConfig, error) {
 	return fieldConfig, nil
 }
 
+var ErrNoFileFound = errors.New("no config file could be found")
+
 func readFiles(fields []*Field, config FilesConfig) error {
+	fileFound := false
 	for _, fileLocation := range config.Locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
@@ -204,6 +207,8 @@ func readFiles(fields []*Field, config FilesConfig) error {
 				continue
 			}
 
+			fileFound = true
+
 			fileBytes, err := ioutil.ReadFile(path.Join(fileLocation, name))
 			if err != nil {
 				return err
@@ -214,27 +219,39 @@ func readFiles(fields []*Field, config FilesConfig) error {
 				return err
 			}
 
-			for _, f := range fields {
-				fieldName := f.Config.FileField
-				if fieldName == "" {
-					fieldName = f.FullName(config.Separator)
-				}
-
-				valueForField, ok := m.Get(fieldName)
-				if !ok {
-					continue
-				}
-
-				fieldTypeZero := reflect.Zero(f.Value.Type())
-				v := fieldTypeZero.Interface()
-
-				if err := mapstructure.Decode(valueForField, &v); err != nil {
-					return err
-				}
-
-				f.Value.Set(reflect.ValueOf(v))
+			if err := readFileMap(fields, config.Separator, m); err != nil {
+				return err
 			}
 		}
+	}
+
+	if !fileFound {
+		return ErrNoFileFound
+	}
+
+	return nil
+}
+
+func readFileMap(fields []*Field, separator string, m *ciMap) error {
+	for _, f := range fields {
+		fieldName := f.Config.FileField
+		if fieldName == "" {
+			fieldName = f.FullName(separator)
+		}
+
+		valueForField, ok := m.Get(fieldName)
+		if !ok {
+			continue
+		}
+
+		fieldTypeZero := reflect.Zero(f.Value.Type())
+		v := fieldTypeZero.Interface()
+
+		if err := mapstructure.Decode(valueForField, &v); err != nil {
+			return err
+		}
+
+		f.Value.Set(reflect.ValueOf(v))
 	}
 
 	return nil
