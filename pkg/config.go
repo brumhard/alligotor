@@ -101,17 +101,17 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	// read files
-	if err := c.readFiles(fields); err != nil {
+	if err := readFiles(fields, c.Files); err != nil {
 		return err
 	}
 
 	// read env
-	if err := c.readEnv(fields); err != nil {
+	if err := readEnv(fields, c.Env, getEnvAsMap()); err != nil {
 		return err
 	}
 
 	// read flags
-	if err := c.readPFlags(fields); err != nil {
+	if err := readPFlags(fields, c.Flags, os.Args[1:]); err != nil {
 		return err
 	}
 
@@ -146,6 +146,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 
 		if fieldValue.Kind() == reflect.Struct {
 			newBase := append(base, fieldType.Name)
+
 			subFields, err := getFieldsConfigsFromValue(fieldValue, newBase...)
 			if err != nil {
 				return nil, err
@@ -188,8 +189,8 @@ func readFieldConfig(configStr string) (ParameterConfig, error) {
 	return fieldConfig, nil
 }
 
-func (c *Collector) readFiles(fields []*Field) error {
-	for _, fileLocation := range c.Files.Locations {
+func readFiles(fields []*Field, config FilesConfig) error {
+	for _, fileLocation := range config.Locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
 			continue
@@ -197,7 +198,7 @@ func (c *Collector) readFiles(fields []*Field) error {
 
 		for _, fileInfo := range fileInfos {
 			name := fileInfo.Name()
-			if strings.TrimSuffix(name, path.Ext(name)) != c.Files.BaseName {
+			if strings.TrimSuffix(name, path.Ext(name)) != config.BaseName {
 				continue
 			}
 
@@ -206,7 +207,7 @@ func (c *Collector) readFiles(fields []*Field) error {
 				return err
 			}
 
-			m, err := unmarshal(c.Files.Separator, fileBytes)
+			m, err := unmarshal(config.Separator, fileBytes)
 			if err != nil {
 				return err
 			}
@@ -214,19 +215,19 @@ func (c *Collector) readFiles(fields []*Field) error {
 			for _, f := range fields {
 				fieldName := f.Config.FileField
 				if fieldName == "" {
-					fieldName = f.FullName(c.Files.Separator)
+					fieldName = f.FullName(config.Separator)
 				}
 
 				valueForField, ok := m.Get(fieldName)
+				if !ok {
+					continue
+				}
+
 				fieldTypeZero := reflect.Zero(f.Value.Type())
 				v := fieldTypeZero.Interface()
 
-				// if value is set, set it, otherwise overwrite with zero value
-				// this is to protect values that are set by parent struct but have an overwrite set
-				if ok {
-					if err := mapstructure.Decode(valueForField, &v); err != nil {
-						return err
-					}
+				if err := mapstructure.Decode(valueForField, &v); err != nil {
+					return err
 				}
 
 				f.Value.Set(reflect.ValueOf(v))
@@ -237,17 +238,32 @@ func (c *Collector) readFiles(fields []*Field) error {
 	return nil
 }
 
-func (c *Collector) readEnv(fields []*Field) error {
+func getEnvAsMap() map[string]string {
+	envMap := map[string]string{}
+
+	envKeyVal := os.Environ()
+	for _, keyVal := range envKeyVal {
+		split := strings.SplitN(keyVal, "=", 2)
+		envMap[split[0]] = split[1]
+	}
+
+	return envMap
+}
+
+func readEnv(fields []*Field, config EnvConfig, vars map[string]string) error {
 	for _, f := range fields {
 		envName := f.Config.EnvName
 		if envName == "" {
-			envName = strings.ToUpper(f.FullName(c.Env.Separator))
+			envName = strings.ToUpper(f.FullName(config.Separator))
 		}
 
-		if envVal, ok := os.LookupEnv(envName); ok {
-			if err := setFromString(f.Value, envVal); err != nil {
-				return err
-			}
+		envVal, ok := vars[envName]
+		if !ok {
+			continue
+		}
+
+		if err := setFromString(f.Value, envVal); err != nil {
+			return err
 		}
 	}
 
@@ -259,14 +275,14 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func (c *Collector) readPFlags(fields []*Field) error {
+func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	fieldToFlagInfo := make(map[*Field]flagInfo)
 
 	for _, f := range fields {
 		longName := f.Config.Flag.Name
 		if longName == "" {
-			longName = strings.ToLower(f.FullName(c.Flags.Separator))
+			longName = strings.ToLower(f.FullName(config.Separator))
 		}
 
 		shortName := ""
@@ -280,7 +296,7 @@ func (c *Collector) readPFlags(fields []*Field) error {
 		}
 	}
 
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
+	if err := flagSet.Parse(args); err != nil {
 		return err
 	}
 
@@ -306,6 +322,13 @@ func setFromString(target reflect.Value, value string) (err error) {
 			err = ErrInvalidType
 		}
 	}()
+
+	if value == "" {
+		zeroValue := reflect.Zero(target.Type())
+		target.Set(zeroValue)
+
+		return nil
+	}
 
 	switch target.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

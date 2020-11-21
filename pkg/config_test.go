@@ -162,7 +162,7 @@ func TestCollector_File_Nested_Overwrite(t *testing.T) {
 	tempDir := t.TempDir()
 	config.Files.Locations = []string{tempDir}
 
-	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}}`), 0600))
+	r.NoError(ioutil.WriteFile(tempDir+"/config.json", []byte(`{"sub": {"port": 4000}, "port": 0}`), 0600))
 	r.NoError(config.Get(&testStruct))
 	r.NotEqual(4000, testStruct.Sub.Port)
 
