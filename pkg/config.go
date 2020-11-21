@@ -256,8 +256,13 @@ func readEnv(fields []*Field, config EnvConfig, vars map[string]string) error {
 	for _, f := range fields {
 		envName := f.Config.EnvName
 		if envName == "" {
-			envName = strings.ToUpper(f.FullName(config.Separator))
+			envName = f.FullName(config.Separator)
+			if config.Prefix != "" {
+				envName = config.Prefix + config.Separator + envName
+			}
 		}
+
+		envName = strings.ToUpper(envName)
 
 		envVal, ok := vars[envName]
 		if !ok {

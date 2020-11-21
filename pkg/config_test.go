@@ -221,7 +221,65 @@ test:
 			})
 		})
 
-		Describe("readEnv", func() {})
+		Describe("readEnv", func() {
+			var config EnvConfig
+			BeforeEach(func() {
+				config = EnvConfig{
+					Prefix:    "",
+					Separator: "_",
+					Disabled:  false,
+				}
+			})
+			It("uses uppercase name as default flag name", func() {
+				err := readEnv(fields, config, map[string]string{"PORT": "3000"})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(3000))
+			})
+			It("uses configured name", func() {
+				fields[0].Config.EnvName = "overwrite"
+				err := readEnv(fields, config, map[string]string{"OVERWRITE": "3000"})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(3000))
+			})
+			It("uses prefix", func() {
+				config.Prefix = "prefix"
+				err := readEnv(fields, config, map[string]string{"PREFIX_PORT": "3000"})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(3000))
+			})
+			It("doesn't use prefix if name is configured", func() {
+				config.Prefix = "prefix"
+				fields[0].Config.EnvName = "overwrite"
+				err := readEnv(fields, config, map[string]string{"OVERWRITE": "3000"})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(3000))
+			})
+			It("doesn't overwrite with empty value if not set", func() {
+				target.V = 3000
+				err := readEnv(fields, config, map[string]string{})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(3000))
+			})
+			It("overwrites with empty value if set to empty", func() {
+				target.V = 3000
+				err := readEnv(fields, config, map[string]string{"PORT": ""})
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(target.V).To(Equal(0))
+			})
+			Context("nested", func() {
+				It("uses separator", func() {
+					err := readEnv(nestedFields, config, map[string]string{"SUB_PORT": "1234"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1234))
+				})
+				It("can be overridden", func() {
+					nestedFields[0].Config.EnvName = "PORT"
+					err := readEnv(nestedFields, config, map[string]string{"PORT": "1234"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1234))
+				})
+			})
+		})
 		Describe("readFiles", func() {})
 	})
 	Describe("getEnvAsMap", func() {})
