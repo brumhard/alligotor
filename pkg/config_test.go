@@ -390,8 +390,45 @@ test:
 			})
 		})
 	})
-	Describe("getEnvAsMap", func() {})
-	Describe("readFieldConfig", func() {})
+	Describe("getEnvAsMap", func() {
+		It("gets environment variables in right format", func() {
+			Expect(os.Setenv("TESTING_KEY", "TESTING_VAL")).To(Succeed())
+			envMap := getEnvAsMap()
+			testingVal, ok := envMap["TESTING_KEY"]
+			Expect(ok).To(BeTrue())
+			Expect(testingVal).To(Equal("TESTING_VAL"))
+		})
+		It("supports '=' and ',' in the value", func() {
+			Expect(os.Setenv("TESTING_KEY", "lel=lol,arr=lul")).To(Succeed())
+			envMap := getEnvAsMap()
+			testingVal, ok := envMap["TESTING_KEY"]
+			Expect(ok).To(BeTrue())
+			Expect(testingVal).To(Equal("lel=lol,arr=lul"))
+		})
+	})
+	Describe("readFieldConfig", func() {
+		It("returns empty ParameterConfig if configStr is empty", func() {
+			p, err := readFieldConfig("")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(p).To(Equal(ParameterConfig{}))
+		})
+		It("panic if configStr hast invalid format", func() {
+			Expect(func() { _, _ = readFieldConfig("file=") }).To(Panic())
+			Expect(func() { _, _ = readFieldConfig("env") }).To(Panic())
+		})
+		It("works with valid format configStr, allows whitespace", func() {
+			p, err := readFieldConfig("file=val,env=val,flag=l long")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(p).To(Equal(ParameterConfig{
+				FileField: "val",
+				EnvName:   "val",
+				Flag: Flag{
+					Name:      "long",
+					ShortName: "l",
+				},
+			}))
+		})
+	})
 	Describe("getFieldsConfigsFromValue", func() {})
 	Describe("Collector", func() {
 		Describe("Get", func() {})

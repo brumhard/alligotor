@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
-
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -126,17 +125,9 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
 		fieldValue := value.Field(i)
-		configStr := fieldType.Tag.Get(tag)
-
-		fieldConfig := ParameterConfig{}
-
-		if configStr != "" {
-			var err error
-
-			fieldConfig, err = readFieldConfig(configStr)
-			if err != nil {
-				return nil, err
-			}
+		fieldConfig, err := readFieldConfig(fieldType.Tag.Get(tag))
+		if err != nil {
+			return nil, err
 		}
 
 		fields = append(fields, &Field{
@@ -164,10 +155,20 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 func readFieldConfig(configStr string) (ParameterConfig, error) {
 	fieldConfig := ParameterConfig{}
 
+	if configStr == "" {
+		return ParameterConfig{}, nil
+	}
+
 	for _, paramStr := range strings.Split(configStr, ",") {
 		keyVal := strings.SplitN(paramStr, "=", 2)
 		if len(keyVal) != 2 {
 			panic("invalid config struct tag format")
+		}
+
+		for _, v := range keyVal {
+			if v == "" {
+				panic(`config struct tag needs to have the format: config:"file=val,env=val,flag=l long"`)
+			}
 		}
 
 		key := keyVal[0]
@@ -185,6 +186,10 @@ func readFieldConfig(configStr string) (ParameterConfig, error) {
 			}
 
 			fieldConfig.Flag = flagConf
+		default:
+			panic(
+				fmt.Sprintf("only %s, %s, and %s are allowed as config tag keys", envKey, fileKey, flagKey),
+			)
 		}
 	}
 
@@ -195,6 +200,7 @@ var ErrNoFileFound = errors.New("no config file could be found")
 
 func readFiles(fields []*Field, config FilesConfig) error {
 	fileFound := false
+
 	for _, fileLocation := range config.Locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
