@@ -430,7 +430,31 @@ test:
 		})
 	})
 	Describe("getFieldsConfigsFromValue", func() {
-
+		It("gets correct fields, supports nested struct", func() {
+			target := struct {
+				Sub struct {
+					Port int `config:"env=test"`
+				}
+			}{}
+			fields, err := getFieldsConfigsFromValue(reflect.ValueOf(target))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(fields).To(Equal([]*Field{
+				{
+					Base:   nil,
+					Name:   "Sub",
+					Value:  reflect.ValueOf(target.Sub),
+					Config: ParameterConfig{},
+				},
+				{
+					Base:  []string{"Sub"},
+					Name:  "Port",
+					Value: reflect.ValueOf(target.Sub.Port),
+					Config: ParameterConfig{
+						EnvName: "test",
+					},
+				},
+			}))
+		})
 	})
 	Describe("Collector", func() {
 		Describe("Get", func() {})
