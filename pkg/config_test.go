@@ -143,7 +143,54 @@ test:
 	})
 
 	Describe("readPFlags", func() {
+		var fields []*Field
+		var config FlagsConfig
+		var target *struct{ V int }
 
+		BeforeEach(func() {
+			target = &struct{ V int }{}
+			fields = []*Field{
+				{
+					Name:   "port",
+					Value:  WrappedValue(target),
+					Config: ParameterConfig{},
+				},
+			}
+			config = FlagsConfig{
+				Separator: "-",
+				Disabled:  false,
+			}
+		})
+
+		It("uses name as default flag name", func() {
+			err := readPFlags(fields, config, []string{"--port", "3000"})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(target.V).To(Equal(3000))
+		})
+		It("uses configured long name", func() {
+			fields[0].Config.Flag.Name = "overwrite"
+			err := readPFlags(fields, config, []string{"--overwrite", "3000"})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(target.V).To(Equal(3000))
+		})
+		It("uses configured short name", func() {
+			fields[0].Config.Flag.ShortName = "o"
+			err := readPFlags(fields, config, []string{"-o", "3000"})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(target.V).To(Equal(3000))
+		})
+		It("doesn't overwrite with empty value if not set", func() {
+			target.V = 3000
+			err := readPFlags(fields, config, []string{})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(target.V).To(Equal(3000))
+		})
+		It("overwrites with empty value if set to empty", func() {
+			target.V = 3000
+			err := readPFlags(fields, config, []string{"--port", ""})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(target.V).To(Equal(0))
+		})
 	})
 
 	Describe("readEnv", func() {
