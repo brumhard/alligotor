@@ -32,18 +32,18 @@ var _ = Describe("config", func() {
 				for _, configStr := range []string{"a awd", "awd a"} {
 					flag, err := readFlagConfig(configStr)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(flag).To(Equal(Flag{ShortName: "a", Name: "awd"}))
+					Expect(flag).To(Equal(Flag{ShortName: "a", DefaultName: "awd"}))
 				}
 			})
 			It("should return valid flag when only short is set", func() {
 				flag, err := readFlagConfig("a")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(Flag{ShortName: "a", Name: ""}))
+				Expect(flag).To(Equal(Flag{ShortName: "a", DefaultName: ""}))
 			})
 			It("should return valid flag when only long is set", func() {
 				flag, err := readFlagConfig("awd")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(Flag{ShortName: "", Name: "awd"}))
+				Expect(flag).To(Equal(Flag{ShortName: "", DefaultName: "awd"}))
 			})
 		})
 	})
@@ -196,7 +196,7 @@ test:
 				Expect(target.V).To(Equal(3000))
 			})
 			It("uses configured long name", func() {
-				fields[0].Config.Flag.Name = "overwrite"
+				fields[0].Config.Flag.DefaultName = "overwrite"
 				err := readPFlags(fields, config, []string{"--overwrite", "3000"})
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(target.V).To(Equal(3000))
@@ -226,20 +226,20 @@ test:
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
 				It("can use defaults", func() {
-					nestedFields[0].Config.Flag.Name = "default"
+					nestedFields[0].Config.Flag.DefaultName = "default"
 					err := readPFlags(nestedFields, config, []string{"--default", "1234"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
 				It("uses destinct name instead of overridden/default if both are set", func() {
-					nestedFields[0].Config.Flag.Name = "default"
+					nestedFields[0].Config.Flag.DefaultName = "default"
 					err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1235))
 				})
 				It("works if multiple fields are trying to get the same default flag", func() {
-					nestedFields[0].Config.Flag.Name = "default"
-					nestedFields[1].Config.Flag.Name = "default"
+					nestedFields[0].Config.Flag.DefaultName = "default"
+					nestedFields[1].Config.Flag.DefaultName = "default"
 					err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1235))
@@ -263,7 +263,7 @@ test:
 				Expect(target.V).To(Equal(3000))
 			})
 			It("uses configured name", func() {
-				fields[0].Config.EnvName = "overwrite"
+				fields[0].Config.DefaultEnvName = "overwrite"
 				err := readEnv(fields, config, map[string]string{"OVERWRITE": "3000"})
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(target.V).To(Equal(3000))
@@ -276,7 +276,7 @@ test:
 			})
 			It("doesn't use prefix if name is configured", func() {
 				config.Prefix = "prefix"
-				fields[0].Config.EnvName = "overwrite"
+				fields[0].Config.DefaultEnvName = "overwrite"
 				err := readEnv(fields, config, map[string]string{"OVERWRITE": "3000"})
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(target.V).To(Equal(3000))
@@ -300,20 +300,20 @@ test:
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
 				It("can be overridden", func() {
-					nestedFields[0].Config.EnvName = "PORT"
+					nestedFields[0].Config.DefaultEnvName = "PORT"
 					err := readEnv(nestedFields, config, map[string]string{"PORT": "1234"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
 				It("uses destinct name instead of overridden/default if both are set", func() {
-					nestedFields[0].Config.EnvName = "DEFAULT"
+					nestedFields[0].Config.DefaultEnvName = "DEFAULT"
 					err := readEnv(nestedFields, config, map[string]string{"DEFAULT": "1234", "SUB_PORT": "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1235))
 				})
 				It("works if multiple fields are trying to get the same default flag", func() {
-					nestedFields[0].Config.EnvName = "DEFAULT"
-					nestedFields[1].Config.EnvName = "DEFAULT"
+					nestedFields[0].Config.DefaultEnvName = "DEFAULT"
+					nestedFields[1].Config.DefaultEnvName = "DEFAULT"
 					err := readEnv(nestedFields, config, map[string]string{"DEFAULT": "1234", "SUB_PORT": "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1235))
@@ -384,7 +384,7 @@ test:
 					Expect(readFileMap(fields, separator, m)).NotTo(Succeed())
 				})
 				It("uses configured overwrite long name", func() {
-					fields[0].Config.FileField = "overwrite"
+					fields[0].Config.DefaultFileField = "overwrite"
 					m.m = map[string]interface{}{"overwrite": 3000}
 
 					Expect(readFileMap(fields, separator, m)).To(Succeed())
@@ -411,29 +411,29 @@ test:
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
 					})
 					It("can be targeted with overwrite", func() {
-						nestedFields[0].Config.FileField = "sub.port"
+						nestedFields[0].Config.DefaultFileField = "sub.port"
 						m.m = map[string]interface{}{"sub": map[string]interface{}{"port": 1234}}
 
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
 					})
 					It("can be overridden", func() {
-						nestedFields[0].Config.FileField = "default"
+						nestedFields[0].Config.DefaultFileField = "default"
 						m.m = map[string]interface{}{"default": 1234}
 
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
 					})
 					It("uses destinct name instead of overridden/default if both are set", func() {
-						nestedFields[0].Config.FileField = "default"
+						nestedFields[0].Config.DefaultFileField = "default"
 						m.m = map[string]interface{}{"default": 1234, "sub": map[string]interface{}{"port": 1235}}
 
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
 						Expect(nestedTarget.Sub.V).To(Equal(1235))
 					})
 					It("works if multiple fields are trying to get the same default flag", func() {
-						nestedFields[0].Config.FileField = "default"
-						nestedFields[1].Config.FileField = "default"
+						nestedFields[0].Config.DefaultFileField = "default"
+						nestedFields[1].Config.DefaultFileField = "default"
 						m.m = map[string]interface{}{"default": 1234, "sub": map[string]interface{}{"port": 1235}}
 
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
@@ -474,11 +474,11 @@ test:
 			p, err := readParameterConfig("file=val,env=val,flag=l long")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(p).To(Equal(ParameterConfig{
-				FileField: "val",
-				EnvName:   "val",
+				DefaultFileField: "val",
+				DefaultEnvName:   "val",
 				Flag: Flag{
-					Name:      "long",
-					ShortName: "l",
+					DefaultName: "long",
+					ShortName:   "l",
 				},
 			}))
 		})
@@ -504,7 +504,7 @@ test:
 					Name:  "Port",
 					Value: reflect.ValueOf(target.Sub.Port),
 					Config: ParameterConfig{
-						EnvName: "test",
+						DefaultEnvName: "test",
 					},
 				},
 			}))

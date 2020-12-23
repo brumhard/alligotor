@@ -77,14 +77,14 @@ func (f *Field) FullName(separator string) string {
 }
 
 type ParameterConfig struct {
-	FileField string
-	EnvName   string
-	Flag      Flag
+	DefaultFileField string
+	DefaultEnvName   string
+	Flag             Flag
 }
 
 type Flag struct {
-	Name      string
-	ShortName string
+	DefaultName string
+	ShortName   string
 }
 
 func (c *Collector) Get(v interface{}) error {
@@ -187,9 +187,9 @@ func readParameterConfig(configStr string) (ParameterConfig, error) {
 
 		switch key {
 		case envKey:
-			fieldConfig.EnvName = val
+			fieldConfig.DefaultEnvName = val
 		case fileKey:
-			fieldConfig.FileField = val
+			fieldConfig.DefaultFileField = val
 		case flagKey:
 			flagConf, err := readFlagConfig(val)
 			if err != nil {
@@ -252,7 +252,7 @@ func readFiles(fields []*Field, config FilesConfig) error {
 func readFileMap(fields []*Field, separator string, m *ciMap) error {
 	for _, f := range fields {
 		fieldNames := []string{
-			f.Config.FileField,
+			f.Config.DefaultFileField,
 			f.FullName(separator),
 		}
 
@@ -296,7 +296,7 @@ func readEnv(fields []*Field, config EnvConfig, vars map[string]string) error {
 		}
 
 		envNames := []string{
-			f.Config.EnvName,
+			f.Config.DefaultEnvName,
 			destinctEnvName,
 		}
 
@@ -328,7 +328,7 @@ func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 
 	for _, f := range fields {
 		longName := strings.ToLower(f.FullName(config.Separator))
-		defaultName := f.Config.Flag.Name
+		defaultName := f.Config.Flag.DefaultName
 
 		defaultFlag, ok := fieldCache[defaultName]
 		if !ok {
@@ -498,11 +498,11 @@ func readFlagConfig(flagStr string) (Flag, error) {
 
 			flagConf.ShortName = flag
 		} else {
-			if flagConf.Name != "" {
+			if flagConf.DefaultName != "" {
 				return Flag{}, ErrMalformedFlagConfig
 			}
 
-			flagConf.Name = flag
+			flagConf.DefaultName = flag
 		}
 	}
 
