@@ -37,10 +37,10 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-// TODO: check support for embedded structs
 // TODO: check support for pointer properties
 // TODO: clean up linting issues
-// TODO: actually use Disabled flags
+// TODO: support duration string in file input
+// TODO: if overwrite is set but also normal (for env and file) use normal, what to do for flags?
 type Collector struct {
 	Files FilesConfig
 	Env   EnvConfig
@@ -93,27 +93,37 @@ func (c *Collector) Get(v interface{}) error {
 		return ErrPointerExpected
 	}
 
-	// collect info about fields with tags, value...
 	t := reflect.Indirect(value)
 
+	// collect info about fields with tags, value...
 	fields, err := getFieldsConfigsFromValue(t)
 	if err != nil {
 		return err
 	}
 
 	// read files
-	if err := readFiles(fields, c.Files); err != nil {
-		return err
+	if !c.Files.Disabled {
+		if err := readFiles(fields, c.Files); err != nil {
+			if !errors.Is(err, ErrNoFileFound) {
+				fmt.Printf("could not find any files, proceeding with env and flags")
+
+				return err
+			}
+		}
 	}
 
 	// read env
-	if err := readEnv(fields, c.Env, getEnvAsMap()); err != nil {
-		return err
+	if !c.Env.Disabled {
+		if err := readEnv(fields, c.Env, getEnvAsMap()); err != nil {
+			return err
+		}
 	}
 
 	// read flags
-	if err := readPFlags(fields, c.Flags, os.Args[1:]); err != nil {
-		return err
+	if !c.Flags.Disabled {
+		if err := readPFlags(fields, c.Flags, os.Args[1:]); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -125,6 +135,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
 		fieldValue := value.Field(i)
+
 		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(tag))
 		if err != nil {
 			return nil, err
@@ -403,6 +414,7 @@ func setFromString(target reflect.Value, value string) (err error) {
 		target.SetFloat(floatVal)
 
 		return nil
+		// TODO: support zap and logrus loglevel
 	case time.Duration:
 		valToSet, err = time.ParseDuration(value)
 	case time.Time:
