@@ -37,10 +37,8 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-// TODO: check support for pointer properties
 // TODO: clean up linting issues
 // TODO: support duration string in file input
-// TODO: if overwrite is set but also normal (for env and file) use normal, what to do for flags?
 type Collector struct {
 	Files FilesConfig
 	Env   EnvConfig
@@ -134,7 +132,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
-		fieldValue := value.Field(i)
+		fieldValue := reflect.Indirect(value.Field(i))
 
 		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(tag))
 		if err != nil {

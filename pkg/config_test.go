@@ -565,6 +565,7 @@ test:
 					Expect(os.RemoveAll(tempDir)).To(Succeed())
 				})
 				Describe("overwrites: default, file, env, flag", func() {
+					// TODO: test all properties
 					testingStruct := testingConfig{
 						Enabled: false,
 						Sleep:   time.Minute,
@@ -581,8 +582,6 @@ test:
 						jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
 						Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
 
-						// FIXME: duration string
-						// FIXME: last assertion (API.LogLevel)
 						Expect(c.Get(&testingStruct)).To(Succeed())
 						Expect(testingStruct.API.Port).To(Equal(2))
 						Expect(testingStruct.DB.LogLevel).To(Equal("default"))
@@ -594,13 +593,13 @@ test:
 						API: &apiConfig{Port: 1, LogLevel: "info"},
 						DB:  &dbConfig{LogLevel: "info"},
 					}
-					jsonBytes := []byte(`{"logLevel": "debug", "api": {"port": 2, "logLevel": "anything"}}`)
+					jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
 					Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
 
 					Expect(c.Get(&testingStruct)).To(Succeed())
 					Expect(testingStruct.API.Port).To(Equal(2))
-					// FIXME
-					Expect(testingStruct.DB.LogLevel).To(Equal("debug"))
+					Expect(testingStruct.DB.LogLevel).To(Equal("default"))
+					Expect(testingStruct.API.LogLevel).To(Equal("specified"))
 				})
 			})
 		})
