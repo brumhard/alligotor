@@ -146,13 +146,19 @@ test:
 	})
 
 	Context("field function", func() {
-		var target *struct{ V int }
+		type targetType struct {
+			V int
+			W int
+		}
+		type nestedTargetType struct{ Sub *targetType }
+
+		var target *targetType
 		var fields []*Field
-		var nestedTarget *struct{ Sub *struct{ V int } }
+		var nestedTarget *nestedTargetType
 		var nestedFields []*Field
 
 		BeforeEach(func() {
-			target = &struct{ V int }{}
+			target = &targetType{}
 			fields = []*Field{
 				{
 					Name:   "port",
@@ -161,14 +167,18 @@ test:
 				},
 			}
 
-			nestedTarget = &struct{ Sub *struct{ V int } }{
-				Sub: &struct{ V int }{V: 0},
-			}
+			nestedTarget = &nestedTargetType{Sub: &targetType{}}
 			nestedFields = []*Field{
 				{
 					Base:   []string{"sub"},
 					Name:   "port",
-					Value:  wrappedValue(nestedTarget, withNested()),
+					Value:  wrappedValue(nestedTarget, withNested(), withIndex(0)),
+					Config: ParameterConfig{},
+				},
+				{
+					Base:   []string{"sub"},
+					Name:   "anything",
+					Value:  wrappedValue(nestedTarget, withNested(), withIndex(1)),
 					Config: ParameterConfig{},
 				},
 			}
@@ -215,11 +225,25 @@ test:
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
-				It("can be overridden", func() {
-					nestedFields[0].Config.Flag.Name = "over"
-					err := readPFlags(nestedFields, config, []string{"--over", "1234"})
+				It("can use defaults", func() {
+					nestedFields[0].Config.Flag.Name = "default"
+					err := readPFlags(nestedFields, config, []string{"--default", "1234"})
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
+				})
+				It("uses destinct name instead of overridden/default if both are set", func() {
+					nestedFields[0].Config.Flag.Name = "default"
+					err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1235))
+				})
+				It("works if multiple fields are trying to get the same default flag", func() {
+					nestedFields[0].Config.Flag.Name = "default"
+					nestedFields[1].Config.Flag.Name = "default"
+					err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1235))
+					Expect(nestedTarget.Sub.W).To(Equal(1234))
 				})
 			})
 		})
@@ -577,6 +601,7 @@ type dbConfig struct {
 
 type wrapSettings struct {
 	nested bool
+	index  *int
 }
 
 type wrapOption func(options *wrapSettings)
@@ -587,6 +612,12 @@ func withNested() wrapOption {
 	}
 }
 
+func withIndex(index int) wrapOption {
+	return func(o *wrapSettings) {
+		o.index = &index
+	}
+}
+
 func wrappedValue(val interface{}, opts ...wrapOption) reflect.Value {
 	settings := &wrapSettings{}
 
@@ -594,11 +625,16 @@ func wrappedValue(val interface{}, opts ...wrapOption) reflect.Value {
 		opt(settings)
 	}
 
-	if settings.nested {
-		return reflect.ValueOf(val).Elem().Field(0).Elem().Field(0)
+	index := 0
+	if settings.index != nil {
+		index = *settings.index
 	}
 
-	return reflect.ValueOf(val).Elem().Field(0)
+	if settings.nested {
+		return reflect.ValueOf(val).Elem().Field(0).Elem().Field(index)
+	}
+
+	return reflect.ValueOf(val).Elem().Field(index)
 }
 
 type testType struct {

@@ -318,19 +318,29 @@ type flagInfo struct {
 
 func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	fieldToFlagInfo := make(map[*Field]flagInfo)
+	fieldToFlagInfo := make(map[*Field][]*flagInfo)
+
+	fieldCache := map[string]*flagInfo{}
 
 	for _, f := range fields {
-		longName := f.Config.Flag.Name
-		if longName == "" {
-			longName = strings.ToLower(f.FullName(config.Separator))
+		longName := strings.ToLower(f.FullName(config.Separator))
+		defaultName := f.Config.Flag.Name
+
+		defaultFlag, ok := fieldCache[defaultName]
+		if !ok {
+			defaultFlag = &flagInfo{
+				valueStr: flagSet.StringP(defaultName, "", "", "default"),
+				flag:     flagSet.Lookup(defaultName),
+			}
+			fieldCache[defaultName] = defaultFlag
 		}
 
-		shortName := f.Config.Flag.ShortName
-
-		fieldToFlagInfo[f] = flagInfo{
-			valueStr: flagSet.StringP(longName, shortName, "", "idk"),
-			flag:     flagSet.Lookup(longName),
+		fieldToFlagInfo[f] = []*flagInfo{
+			defaultFlag,
+			{
+				valueStr: flagSet.StringP(longName, f.Config.Flag.ShortName, "", "specific"),
+				flag:     flagSet.Lookup(longName),
+			},
 		}
 	}
 
@@ -338,14 +348,16 @@ func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 		return err
 	}
 
-	for f, flagInfo := range fieldToFlagInfo {
-		// differentiate a flag that is not set from a flag that is set to ""
-		if !flagInfo.flag.Changed {
-			continue
-		}
+	for f, flagInfoSlice := range fieldToFlagInfo {
+		for _, flagInfo := range flagInfoSlice {
+			// differentiate a flag that is not set from a flag that is set to ""
+			if !flagInfo.flag.Changed {
+				continue
+			}
 
-		if err := setFromString(f.Value, *flagInfo.valueStr); err != nil {
-			return err
+			if err := setFromString(f.Value, *flagInfo.valueStr); err != nil {
+				return err
+			}
 		}
 	}
 
