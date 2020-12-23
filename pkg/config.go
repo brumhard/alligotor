@@ -251,24 +251,26 @@ func readFiles(fields []*Field, config FilesConfig) error {
 
 func readFileMap(fields []*Field, separator string, m *ciMap) error {
 	for _, f := range fields {
-		fieldName := f.Config.FileField
-		if fieldName == "" {
-			fieldName = f.FullName(separator)
+		fieldNames := []string{
+			f.Config.FileField,
+			f.FullName(separator),
 		}
 
-		valueForField, ok := m.Get(fieldName)
-		if !ok {
-			continue
+		for _, fieldName := range fieldNames {
+			valueForField, ok := m.Get(fieldName)
+			if !ok {
+				continue
+			}
+
+			fieldTypeZero := reflect.Zero(f.Value.Type())
+			v := fieldTypeZero.Interface()
+
+			if err := mapstructure.Decode(valueForField, &v); err != nil {
+				return err
+			}
+
+			f.Value.Set(reflect.ValueOf(v))
 		}
-
-		fieldTypeZero := reflect.Zero(f.Value.Type())
-		v := fieldTypeZero.Interface()
-
-		if err := mapstructure.Decode(valueForField, &v); err != nil {
-			return err
-		}
-
-		f.Value.Set(reflect.ValueOf(v))
 	}
 
 	return nil

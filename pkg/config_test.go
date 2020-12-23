@@ -418,11 +418,27 @@ test:
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
 					})
 					It("can be overridden", func() {
-						nestedFields[0].Config.FileField = "over"
-						m.m = map[string]interface{}{"over": 1234}
+						nestedFields[0].Config.FileField = "default"
+						m.m = map[string]interface{}{"default": 1234}
 
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
+					})
+					It("uses destinct name instead of overridden/default if both are set", func() {
+						nestedFields[0].Config.FileField = "default"
+						m.m = map[string]interface{}{"default": 1234, "sub": map[string]interface{}{"port": 1235}}
+
+						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
+						Expect(nestedTarget.Sub.V).To(Equal(1235))
+					})
+					It("works if multiple fields are trying to get the same default flag", func() {
+						nestedFields[0].Config.FileField = "default"
+						nestedFields[1].Config.FileField = "default"
+						m.m = map[string]interface{}{"default": 1234, "sub": map[string]interface{}{"port": 1235}}
+
+						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
+						Expect(nestedTarget.Sub.V).To(Equal(1235))
+						Expect(nestedTarget.Sub.W).To(Equal(1234))
 					})
 				})
 			})
