@@ -37,8 +37,7 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-// TODO: clean up linting issues
-// TODO: support duration string in file input
+// TODO: add constructor with default values for separators
 type Collector struct {
 	Files FilesConfig
 	Env   EnvConfig
@@ -170,7 +169,7 @@ func readParameterConfig(configStr string) (ParameterConfig, error) {
 
 	for _, paramStr := range strings.Split(configStr, ",") {
 		keyVal := strings.SplitN(paramStr, "=", 2)
-		if len(keyVal) != 2 {
+		if len(keyVal) != 2 { // nolint: mnd
 			panic("invalid config struct tag format")
 		}
 
@@ -264,6 +263,15 @@ func readFileMap(fields []*Field, separator string, m *ciMap) error {
 			v := fieldTypeZero.Interface()
 
 			if err := mapstructure.Decode(valueForField, &v); err != nil {
+				// if theres a type mismatch check if value is a string and try to use setFromString (e.g. for duration strings)
+				if valueString, ok := valueForField.(string); ok {
+					if err := setFromString(f.Value, valueString); err != nil {
+						return err
+					}
+
+					continue
+				}
+
 				return err
 			}
 
@@ -484,7 +492,7 @@ func readFlagConfig(flagStr string) (Flag, error) {
 	flagConf := Flag{}
 	flags := strings.Split(flagStr, flagConfigSeparator)
 
-	if len(flags) > 2 {
+	if len(flags) > 2 { // nolint: gomnd
 		return Flag{}, ErrMalformedFlagConfig
 	}
 

@@ -380,8 +380,14 @@ test:
 				BeforeEach(func() {
 					m = &ciMap{separator: separator}
 				})
-				It("returns error if field is of wrong type", func() {
+				It("tries to cast from string if type mismatch", func() {
 					m.m = map[string]interface{}{"port": "1234"}
+
+					Expect(readFileMap(fields, separator, m)).To(Succeed())
+					Expect(target.V).To(Equal(1234))
+				})
+				It("returns error if type mismatch and yaml type is not a string", func() {
+					m.m = map[string]interface{}{"port": []string{"1234"}}
 
 					Expect(readFileMap(fields, separator, m)).NotTo(Succeed())
 				})
@@ -514,6 +520,36 @@ test:
 	})
 	Describe("Collector", func() {
 		Describe("Get", func() {
+			var tempDir string
+			var c *Collector
+			BeforeEach(func() {
+				var err error
+				// create temp dir
+				tempDir, err = ioutil.TempDir("", "tests*")
+				Expect(err).ShouldNot(HaveOccurred())
+
+				c = &Collector{
+					Files: FilesConfig{
+						Locations: []string{tempDir},
+						BaseName:  "config",
+						Separator: ".",
+						Disabled:  false,
+					},
+					Env: EnvConfig{
+						Prefix:    "",
+						Separator: "_",
+						Disabled:  false,
+					},
+					Flags: FlagsConfig{
+						Separator: "-",
+						Disabled:  false,
+					},
+				}
+			})
+			AfterEach(func() {
+				// delete temp dir
+				Expect(os.RemoveAll(tempDir)).To(Succeed())
+			})
 			It("returns error if v is not a pointer", func() {
 				err := (&Collector{}).Get(struct{}{})
 				Expect(err).Should(HaveOccurred())
@@ -523,38 +559,40 @@ test:
 				err := (&Collector{}).Get(&struct{}{})
 				Expect(err).ShouldNot(HaveOccurred())
 			})
+			It("supports pointers for properties", func() {
+				testingStruct := testingConfigPointers{
+					API: &test.APIConfig{Port: 1, LogLevel: "info"},
+					DB:  &test.DBConfig{LogLevel: "info"},
+				}
+				jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
+				Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
+
+				Expect(c.Get(&testingStruct)).To(Succeed())
+				Expect(testingStruct.API.Port).To(Equal(2))
+				Expect(testingStruct.DB.LogLevel).To(Equal("default"))
+				Expect(testingStruct.API.LogLevel).To(Equal("specified"))
+			})
+			It("supports embedded structs for properties", func() {
+				testingStruct := testingConfigEmbedded{
+					APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
+					DBConfig:  test.DBConfig{LogLevel: "info"},
+				}
+				jsonBytes := []byte(`{"logLevel": "default", "apiConfig": {"port": 2, "logLevel": "specified"}}`)
+				Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
+
+				Expect(c.Get(&testingStruct)).To(Succeed())
+				Expect(testingStruct.APIConfig.Port).To(Equal(2))
+				Expect(testingStruct.DBConfig.LogLevel).To(Equal("default"))
+				Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
+			})
 			Context("Integration Tests", func() {
 				var args []string
 				var env map[string]string
-				var tempDir string
-				var c *Collector
 				BeforeEach(func() {
-					var err error
 					// capture os.Args
 					args = os.Args
 					// capture env
 					env = getEnvAsMap()
-					// create temp dir
-					tempDir, err = ioutil.TempDir("", "tests*")
-					Expect(err).ShouldNot(HaveOccurred())
-
-					c = &Collector{
-						Files: FilesConfig{
-							Locations: []string{tempDir},
-							BaseName:  "config",
-							Separator: ".",
-							Disabled:  false,
-						},
-						Env: EnvConfig{
-							Prefix:    "",
-							Separator: "_",
-							Disabled:  false,
-						},
-						Flags: FlagsConfig{
-							Separator: "-",
-							Disabled:  false,
-						},
-					}
 				})
 				AfterEach(func() {
 					// recover os.Args
@@ -563,11 +601,8 @@ test:
 					for k, v := range env {
 						Expect(os.Setenv(k, v)).To(Succeed())
 					}
-					// delete temp dir
-					Expect(os.RemoveAll(tempDir)).To(Succeed())
 				})
 				Describe("overwrites: default, file, env, flag", func() {
-					// TODO: test all properties
 					testingStruct := testingConfig{
 						Enabled: false,
 						Sleep:   time.Minute,
@@ -580,41 +615,46 @@ test:
 						Expect(c.Get(&testingStruct)).To(Succeed())
 						Expect(testingStruct).To(Equal(defaults))
 					})
-					It("gets overridden by files", func() {
-						jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
-						Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
-
-						Expect(c.Get(&testingStruct)).To(Succeed())
-						Expect(testingStruct.API.Port).To(Equal(2))
-						Expect(testingStruct.DB.LogLevel).To(Equal("default"))
-						Expect(testingStruct.API.LogLevel).To(Equal("specified"))
+					Context("file is set", func() {
+						BeforeEach(func() {
+							jsonBytes := []byte(`{"logLevel": "default", "sleep": "1s", "api": {"port": 2, "logLevel": "specifiedInFile"}}`)
+							Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
+						})
+						It("overrides defaults", func() {
+							Expect(c.Get(&testingStruct)).To(Succeed())
+							Expect(testingStruct.Sleep).To(Equal(1 * time.Second))
+							Expect(testingStruct.API.Port).To(Equal(2))
+							Expect(testingStruct.DB.LogLevel).To(Equal("default"))
+							Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+						})
+						Context("env is set", func() {
+							BeforeEach(func() {
+								Expect(os.Setenv("PORT", "3")).To(Succeed())
+								Expect(os.Setenv("DB_LOGLEVEL", "logLevelFromEnv")).To(Succeed())
+								Expect(os.Setenv("SLEEP", "2m")).To(Succeed())
+							})
+							It("overrides file", func() {
+								Expect(c.Get(&testingStruct)).To(Succeed())
+								Expect(testingStruct.Sleep).To(Equal(2 * time.Minute))
+								Expect(testingStruct.API.Port).To(Equal(3))
+								Expect(testingStruct.DB.LogLevel).To(Equal("logLevelFromEnv"))
+								Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+							})
+							Context("flags are set", func() {
+								BeforeEach(func() {
+									os.Args = []string{"commandName", "-p", "4", "--enabled", "true", "--sleep", "3h"}
+								})
+								It("overrides env", func() {
+									Expect(c.Get(&testingStruct)).To(Succeed())
+									Expect(testingStruct.Enabled).To(Equal(true))
+									Expect(testingStruct.Sleep).To(Equal(3 * time.Hour))
+									Expect(testingStruct.API.Port).To(Equal(4))
+									Expect(testingStruct.DB.LogLevel).To(Equal("logLevelFromEnv"))
+									Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+								})
+							})
+						})
 					})
-				})
-				It("supports pointers for properties", func() {
-					testingStruct := testingConfigPointers{
-						API: &test.APIConfig{Port: 1, LogLevel: "info"},
-						DB:  &test.DBConfig{LogLevel: "info"},
-					}
-					jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
-					Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
-
-					Expect(c.Get(&testingStruct)).To(Succeed())
-					Expect(testingStruct.API.Port).To(Equal(2))
-					Expect(testingStruct.DB.LogLevel).To(Equal("default"))
-					Expect(testingStruct.API.LogLevel).To(Equal("specified"))
-				})
-				It("supports embedded structs for properties", func() {
-					testingStruct := testingConfigEmbedded{
-						APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
-						DBConfig:  test.DBConfig{LogLevel: "info"},
-					}
-					jsonBytes := []byte(`{"logLevel": "default", "apiConfig": {"port": 2, "logLevel": "specified"}}`)
-					Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
-
-					Expect(c.Get(&testingStruct)).To(Succeed())
-					Expect(testingStruct.APIConfig.Port).To(Equal(2))
-					Expect(testingStruct.DBConfig.LogLevel).To(Equal("default"))
-					Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
 				})
 			})
 		})
