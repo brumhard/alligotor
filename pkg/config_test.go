@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/brumhard/alligotor/pkg/test"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -569,8 +571,8 @@ test:
 					testingStruct := testingConfig{
 						Enabled: false,
 						Sleep:   time.Minute,
-						API:     apiConfig{Port: 1, LogLevel: "info"},
-						DB:      dbConfig{LogLevel: "info"},
+						API:     test.APIConfig{Port: 1, LogLevel: "info"},
+						DB:      test.DBConfig{LogLevel: "info"},
 					}
 					defaults := testingStruct
 
@@ -590,8 +592,8 @@ test:
 				})
 				It("supports pointers for properties", func() {
 					testingStruct := testingConfigPointers{
-						API: &apiConfig{Port: 1, LogLevel: "info"},
-						DB:  &dbConfig{LogLevel: "info"},
+						API: &test.APIConfig{Port: 1, LogLevel: "info"},
+						DB:  &test.DBConfig{LogLevel: "info"},
 					}
 					jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
 					Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
@@ -601,6 +603,19 @@ test:
 					Expect(testingStruct.DB.LogLevel).To(Equal("default"))
 					Expect(testingStruct.API.LogLevel).To(Equal("specified"))
 				})
+				It("supports embedded structs for properties", func() {
+					testingStruct := testingConfigEmbedded{
+						APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
+						DBConfig:  test.DBConfig{LogLevel: "info"},
+					}
+					jsonBytes := []byte(`{"logLevel": "default", "apiConfig": {"port": 2, "logLevel": "specified"}}`)
+					Expect(ioutil.WriteFile(path.Join(tempDir, c.Files.BaseName), jsonBytes, 0600)).To(Succeed())
+
+					Expect(c.Get(&testingStruct)).To(Succeed())
+					Expect(testingStruct.APIConfig.Port).To(Equal(2))
+					Expect(testingStruct.DBConfig.LogLevel).To(Equal("default"))
+					Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
+				})
 			})
 		})
 	})
@@ -609,23 +624,18 @@ test:
 type testingConfig struct {
 	Enabled bool
 	Sleep   time.Duration
-	API     apiConfig
-	DB      dbConfig
+	API     test.APIConfig
+	DB      test.DBConfig
 }
 
 type testingConfigPointers struct {
-	API *apiConfig
-	DB  *dbConfig
+	API *test.APIConfig
+	DB  *test.DBConfig
 }
 
-type apiConfig struct {
-	Port     int    `config:"env=PORT,flag=p"`
-	LogLevel string `config:"file=loglevel"`
-}
-
-type dbConfig struct {
-	Password string
-	LogLevel string `config:"file=loglevel"`
+type testingConfigEmbedded struct {
+	test.APIConfig
+	test.DBConfig
 }
 
 type wrapSettings struct {
