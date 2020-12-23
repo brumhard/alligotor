@@ -288,23 +288,25 @@ func getEnvAsMap() map[string]string {
 
 func readEnv(fields []*Field, config EnvConfig, vars map[string]string) error {
 	for _, f := range fields {
-		envName := f.Config.EnvName
-		if envName == "" {
-			envName = f.FullName(config.Separator)
-			if config.Prefix != "" {
-				envName = config.Prefix + config.Separator + envName
+		destinctEnvName := f.FullName(config.Separator)
+		if config.Prefix != "" {
+			destinctEnvName = config.Prefix + config.Separator + destinctEnvName
+		}
+
+		envNames := []string{
+			f.Config.EnvName,
+			destinctEnvName,
+		}
+
+		for _, envName := range envNames {
+			envVal, ok := vars[strings.ToUpper(envName)]
+			if !ok {
+				continue
 			}
-		}
 
-		envName = strings.ToUpper(envName)
-
-		envVal, ok := vars[envName]
-		if !ok {
-			continue
-		}
-
-		if err := setFromString(f.Value, envVal); err != nil {
-			return err
+			if err := setFromString(f.Value, envVal); err != nil {
+				return err
+			}
 		}
 	}
 

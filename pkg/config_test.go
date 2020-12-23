@@ -305,6 +305,20 @@ test:
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
+				It("uses destinct name instead of overridden/default if both are set", func() {
+					nestedFields[0].Config.EnvName = "DEFAULT"
+					err := readEnv(nestedFields, config, map[string]string{"DEFAULT": "1234", "SUB_PORT": "1235"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1235))
+				})
+				It("works if multiple fields are trying to get the same default flag", func() {
+					nestedFields[0].Config.EnvName = "DEFAULT"
+					nestedFields[1].Config.EnvName = "DEFAULT"
+					err := readEnv(nestedFields, config, map[string]string{"DEFAULT": "1234", "SUB_PORT": "1235"})
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(nestedTarget.Sub.V).To(Equal(1235))
+					Expect(nestedTarget.Sub.W).To(Equal(1234))
+				})
 			})
 		})
 
