@@ -34,18 +34,18 @@ var _ = Describe("config", func() {
 				for _, configStr := range []string{"a awd", "awd a"} {
 					flag, err := readFlagConfig(configStr)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(flag).To(Equal(Flag{ShortName: "a", DefaultName: "awd"}))
+					Expect(flag).To(Equal(flag{ShortName: "a", DefaultName: "awd"}))
 				}
 			})
 			It("should return valid flag when only short is set", func() {
 				flag, err := readFlagConfig("a")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(Flag{ShortName: "a", DefaultName: ""}))
+				Expect(flag).To(Equal(flag{ShortName: "a", DefaultName: ""}))
 			})
 			It("should return valid flag when only long is set", func() {
 				flag, err := readFlagConfig("awd")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(Flag{ShortName: "", DefaultName: "awd"}))
+				Expect(flag).To(Equal(flag{ShortName: "", DefaultName: "awd"}))
 			})
 		})
 	})
@@ -155,33 +155,33 @@ test:
 		type nestedTargetType struct{ Sub *targetType }
 
 		var target *targetType
-		var fields []*Field
+		var fields []*field
 		var nestedTarget *nestedTargetType
-		var nestedFields []*Field
+		var nestedFields []*field
 
 		BeforeEach(func() {
 			target = &targetType{}
-			fields = []*Field{
+			fields = []*field{
 				{
 					Name:   "port",
 					Value:  wrappedValue(target),
-					Config: ParameterConfig{},
+					Config: parameterConfig{},
 				},
 			}
 
 			nestedTarget = &nestedTargetType{Sub: &targetType{}}
-			nestedFields = []*Field{
+			nestedFields = []*field{
 				{
 					Base:   []string{"sub"},
 					Name:   "port",
 					Value:  wrappedValue(nestedTarget, withNested(), withIndex(0)),
-					Config: ParameterConfig{},
+					Config: parameterConfig{},
 				},
 				{
 					Base:   []string{"sub"},
 					Name:   "anything",
 					Value:  wrappedValue(nestedTarget, withNested(), withIndex(1)),
-					Config: ParameterConfig{},
+					Config: parameterConfig{},
 				},
 			}
 		})
@@ -469,10 +469,10 @@ test:
 		})
 	})
 	Describe("readParameterConfig", func() {
-		It("returns empty ParameterConfig if configStr is empty", func() {
+		It("returns empty parameterConfig if configStr is empty", func() {
 			p, err := readParameterConfig("")
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(p).To(Equal(ParameterConfig{}))
+			Expect(p).To(Equal(parameterConfig{}))
 		})
 		It("panic if configStr hast invalid format", func() {
 			Expect(func() { _, _ = readParameterConfig("file=") }).To(Panic())
@@ -481,10 +481,10 @@ test:
 		It("works with valid format configStr, allows whitespace", func() {
 			p, err := readParameterConfig("file=val,env=val,flag=l long")
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(p).To(Equal(ParameterConfig{
+			Expect(p).To(Equal(parameterConfig{
 				DefaultFileField: "val",
 				DefaultEnvName:   "val",
-				Flag: Flag{
+				Flag: flag{
 					DefaultName: "long",
 					ShortName:   "l",
 				},
@@ -500,18 +500,18 @@ test:
 			}{}
 			fields, err := getFieldsConfigsFromValue(reflect.ValueOf(target))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(fields).To(Equal([]*Field{
+			Expect(fields).To(Equal([]*field{
 				{
 					Base:   nil,
 					Name:   "Sub",
 					Value:  reflect.ValueOf(target.Sub),
-					Config: ParameterConfig{},
+					Config: parameterConfig{},
 				},
 				{
 					Base:  []string{"Sub"},
 					Name:  "Port",
 					Value: reflect.ValueOf(target.Sub.Port),
-					Config: ParameterConfig{
+					Config: parameterConfig{
 						DefaultEnvName: "test",
 					},
 				},

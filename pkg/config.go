@@ -22,6 +22,9 @@ var (
 	ErrMalformedFlagConfig  = fmt.Errorf("malformed flag config strings")
 	ErrFileTypeNotSupported = fmt.Errorf("could not unmarshal file, file type not supported")
 	ErrPointerExpected      = fmt.Errorf("expected a pointer as input")
+	ErrNoFileFound          = errors.New("no config file could be found")
+	ErrUnsupportedType      = errors.New("invalid type")
+	ErrCantSet              = errors.New("can't set value")
 )
 
 const (
@@ -37,13 +40,39 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-// TODO: add constructor with default values for separators
+// NewDefault creates a new config collector with default settings.
+func NewDefault() *Collector {
+	return &Collector{
+		Files: FilesConfig{
+			Locations: []string{"."},
+			BaseName:  "config",
+			Separator: defaultFileSeparator,
+			Disabled:  false,
+		},
+		Env: EnvConfig{
+			Prefix:    "",
+			Separator: defaultEnvSeparator,
+			Disabled:  false,
+		},
+		Flags: FlagsConfig{
+			Separator: defaultFlagSeparator,
+			Disabled:  false,
+		},
+	}
+}
+
+// Collector is the root struct that implements the main package api.
 type Collector struct {
 	Files FilesConfig
 	Env   EnvConfig
 	Flags FlagsConfig
 }
 
+// FilesConfig is used to configure the configuration from files.
+// Locations can be used to define where to look for files with the defined BaseName.
+// Currently only json and yaml files are supported.
+// The Separator is used for nested structs.
+// If Disabled is true the configuration from files is skipped.
 type FilesConfig struct {
 	Locations []string
 	BaseName  string
@@ -51,35 +80,45 @@ type FilesConfig struct {
 	Disabled  bool
 }
 
+// EnvConfig is used to configure the configuration from environment variables.
+// Prefix can be defined the Collector should look for environment variables with a certain prefix.
+// Separator is used for nested structs and also for the Prefix.
+// As an example:
+// If Prefix is set to "example", the Separator is set to "_" and the config struct's field is named Port,
+// the Collector will by default look for the environment variable "EXAMPLE_PORT"
+// If Disabled is true the configuration from environment variables is skipped.
 type EnvConfig struct {
 	Prefix    string
 	Separator string
 	Disabled  bool
 }
 
+// FlagsConfig is used to configure the configuration from command line flags.
+// Separator is used for nested structs to construct flag names from parent and child properties recursively.
+// If Disabled is true the configuration from flags is skipped.
 type FlagsConfig struct {
 	Separator string
 	Disabled  bool
 }
 
-type Field struct {
+type field struct {
 	Base   []string
 	Name   string
 	Value  reflect.Value
-	Config ParameterConfig
+	Config parameterConfig
 }
 
-func (f *Field) FullName(separator string) string {
+func (f *field) FullName(separator string) string {
 	return strings.Join(append(f.Base, f.Name), separator)
 }
 
-type ParameterConfig struct {
+type parameterConfig struct {
 	DefaultFileField string
 	DefaultEnvName   string
-	Flag             Flag
+	Flag             flag
 }
 
-type Flag struct {
+type flag struct {
 	DefaultName string
 	ShortName   string
 }
@@ -126,8 +165,8 @@ func (c *Collector) Get(v interface{}) error {
 	return nil
 }
 
-func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, error) {
-	var fields []*Field
+func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*field, error) {
+	var fields []*field
 
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
@@ -138,7 +177,7 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 			return nil, err
 		}
 
-		fields = append(fields, &Field{
+		fields = append(fields, &field{
 			Base:   base,
 			Name:   fieldType.Name,
 			Value:  fieldValue,
@@ -160,11 +199,11 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 	return fields, nil
 }
 
-func readParameterConfig(configStr string) (ParameterConfig, error) {
-	fieldConfig := ParameterConfig{}
+func readParameterConfig(configStr string) (parameterConfig, error) {
+	fieldConfig := parameterConfig{}
 
 	if configStr == "" {
-		return ParameterConfig{}, nil
+		return parameterConfig{}, nil
 	}
 
 	for _, paramStr := range strings.Split(configStr, ",") {
@@ -190,7 +229,7 @@ func readParameterConfig(configStr string) (ParameterConfig, error) {
 		case flagKey:
 			flagConf, err := readFlagConfig(val)
 			if err != nil {
-				return ParameterConfig{}, err
+				return parameterConfig{}, err
 			}
 
 			fieldConfig.Flag = flagConf
@@ -204,9 +243,7 @@ func readParameterConfig(configStr string) (ParameterConfig, error) {
 	return fieldConfig, nil
 }
 
-var ErrNoFileFound = errors.New("no config file could be found")
-
-func readFiles(fields []*Field, config FilesConfig) error {
+func readFiles(fields []*field, config FilesConfig) error {
 	fileFound := false
 
 	for _, fileLocation := range config.Locations {
@@ -246,7 +283,7 @@ func readFiles(fields []*Field, config FilesConfig) error {
 	return nil
 }
 
-func readFileMap(fields []*Field, separator string, m *ciMap) error {
+func readFileMap(fields []*field, separator string, m *ciMap) error {
 	for _, f := range fields {
 		fieldNames := []string{
 			f.Config.DefaultFileField,
@@ -294,7 +331,7 @@ func getEnvAsMap() map[string]string {
 	return envMap
 }
 
-func readEnv(fields []*Field, config EnvConfig, vars map[string]string) error {
+func readEnv(fields []*field, config EnvConfig, vars map[string]string) error {
 	for _, f := range fields {
 		destinctEnvName := f.FullName(config.Separator)
 		if config.Prefix != "" {
@@ -326,9 +363,9 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
+func readPFlags(fields []*field, config FlagsConfig, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	fieldToFlagInfo := make(map[*Field][]*flagInfo)
+	fieldToFlagInfo := make(map[*field][]*flagInfo)
 
 	fieldCache := map[string]*flagInfo{}
 
@@ -373,11 +410,6 @@ func readPFlags(fields []*Field, config FlagsConfig, args []string) error {
 
 	return nil
 }
-
-var (
-	ErrUnsupportedType = errors.New("invalid type")
-	ErrCantSet         = errors.New("can't set value")
-)
 
 func setFromString(target reflect.Value, value string) (err error) {
 	defer func() {
@@ -488,27 +520,27 @@ func unmarshal(fileSeperator string, bytes []byte) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFlagConfig(flagStr string) (Flag, error) {
-	flagConf := Flag{}
+func readFlagConfig(flagStr string) (flag, error) {
+	flagConf := flag{}
 	flags := strings.Split(flagStr, flagConfigSeparator)
 
 	if len(flags) > 2 { // nolint: gomnd
-		return Flag{}, ErrMalformedFlagConfig
+		return flag{}, ErrMalformedFlagConfig
 	}
 
-	for _, flag := range flags {
-		if len([]rune(flag)) == 1 {
+	for _, f := range flags {
+		if len([]rune(f)) == 1 {
 			if flagConf.ShortName != "" {
-				return Flag{}, ErrMalformedFlagConfig
+				return flag{}, ErrMalformedFlagConfig
 			}
 
-			flagConf.ShortName = flag
+			flagConf.ShortName = f
 		} else {
 			if flagConf.DefaultName != "" {
-				return Flag{}, ErrMalformedFlagConfig
+				return flag{}, ErrMalformedFlagConfig
 			}
 
-			flagConf.DefaultName = flag
+			flagConf.DefaultName = f
 		}
 	}
 
