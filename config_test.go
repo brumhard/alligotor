@@ -1,4 +1,4 @@
-package pkg
+package alligotor
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/brumhard/alligotor/pkg/test"
+	"github.com/brumhard/alligotor/test"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,20 +32,20 @@ var _ = Describe("config", func() {
 		Context("valid input", func() {
 			It("should return valid flag when short and long are set", func() {
 				for _, configStr := range []string{"a awd", "awd a"} {
-					flag, err := readFlagConfig(configStr)
+					f, err := readFlagConfig(configStr)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(flag).To(Equal(flag{ShortName: "a", DefaultName: "awd"}))
+					Expect(f).To(Equal(flag{ShortName: "a", DefaultName: "awd"}))
 				}
 			})
 			It("should return valid flag when only short is set", func() {
-				flag, err := readFlagConfig("a")
+				f, err := readFlagConfig("a")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(flag{ShortName: "a", DefaultName: ""}))
+				Expect(f).To(Equal(flag{ShortName: "a", DefaultName: ""}))
 			})
 			It("should return valid flag when only long is set", func() {
-				flag, err := readFlagConfig("awd")
+				f, err := readFlagConfig("awd")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(flag).To(Equal(flag{ShortName: "", DefaultName: "awd"}))
+				Expect(f).To(Equal(flag{ShortName: "", DefaultName: "awd"}))
 			})
 		})
 	})
