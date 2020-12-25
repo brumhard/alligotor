@@ -62,6 +62,23 @@ func NewDefault() *Collector {
 }
 
 // Collector is the root struct that implements the main package api.
+// A default configuration for the collector can be generated with the NewDefault method.
+// Afterwards the only method that can be called is Collector.Get to unmarshal the found configuration
+// values from the configured sources into the provided struct.
+//
+// The order in which the different configuration sources overwrite each other is the following:
+// defaults -> config files -> environment variables -> command line flags
+// (each source is overwritten by the following source)
+//
+// To define defaults for the config variables it can just be predefined in the struct that the
+// configuration is supposed to be unmarshalled into. Properties that are not set in any of
+// the configuration sources will keep the preset value.
+//
+// Since environment variables and flags are purely text based it also supports types that implement
+// the encoding.TextUnmarshaler interface like for example zap.AtomicLevel and logrus.Level.
+// On top of that custom implementations are already baked into the package to support
+// duration strings using time.ParseDuration() as well as string slices ([]string) in the format val1,val2,val3
+// and string maps (map[string]string) in the format key1=val1,key2=val2.
 type Collector struct {
 	Files FilesConfig
 	Env   EnvConfig
@@ -411,7 +428,7 @@ func readPFlags(fields []*field, config FlagsConfig, args []string) error {
 	return nil
 }
 
-func setFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocylco // just huge switch case
+func setFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocyclo // just huge switch case
 	defer func() {
 		if e := recover(); e != nil {
 			err = ErrUnsupportedType
@@ -468,7 +485,6 @@ func setFromString(target reflect.Value, value string) (err error) { // nolint: 
 		target.SetFloat(floatVal)
 
 		return nil
-		// TODO: support zap and logrus loglevel
 	case time.Duration:
 		valToSet, err = time.ParseDuration(value)
 	case time.Time:
@@ -555,6 +571,10 @@ func (m stringMap) UnmarshalText(text []byte) error {
 
 	for _, keyVal := range keyVals {
 		split := strings.SplitN(keyVal, "=", 2)
+		for i := range split {
+			split[i] = strings.TrimSpace(split[i])
+		}
+
 		m[split[0]] = split[1]
 	}
 
@@ -573,7 +593,12 @@ func (m stringMap) MarshalText() ([]byte, error) {
 type stringSlice []string
 
 func (s *stringSlice) UnmarshalText(text []byte) error {
-	*s = append(*s, strings.Split(string(text), ",")...)
+	tmpSlice := strings.Split(string(text), ",")
+	for i := range tmpSlice {
+		tmpSlice[i] = strings.TrimSpace(tmpSlice[i])
+	}
+
+	*s = tmpSlice
 
 	return nil
 }

@@ -48,7 +48,6 @@ var _ = Describe("config", func() {
 			})
 		})
 	})
-
 	Describe("unmarshal", func() {
 		expectedMap := map[string]interface{}{
 			"test": map[string]interface{}{"sub": "lel"},
@@ -82,7 +81,6 @@ test:
 			})
 		})
 	})
-
 	Describe("setFromString", func() {
 		It("sets anything to zero value if input is empty string", func() {
 			target := &struct{ V testType }{testType{S: "testing"}}
@@ -145,7 +143,6 @@ test:
 			Expect(target.V).To(Equal(testType{S: "mmh"}))
 		})
 	})
-
 	Context("field function", func() {
 		type targetType struct {
 			V int
@@ -655,6 +652,25 @@ test:
 						})
 					})
 				})
+			})
+		})
+	})
+	Describe("custom string map and slice", func() {
+		Describe("string slice", func() {
+			It("works for Unmarshal", func() {
+				s := stringSlice{}
+				Expect(s.UnmarshalText([]byte("string, lol, lel"))).To(Succeed())
+				Expect([]string(s)).To(Equal([]string{"string", "lol", "lel"}))
+			})
+		})
+		Describe("string map", func() {
+			It("works for Unmarshal", func() {
+				s := stringMap{}
+				Expect(s.UnmarshalText([]byte("field1 = string, field2 = lol"))).To(Succeed())
+				Expect(map[string]string(s)).To(Equal(map[string]string{
+					"field1": "string",
+					"field2": "lol",
+				}))
 			})
 		})
 	})
