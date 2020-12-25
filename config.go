@@ -208,7 +208,7 @@ func readParameterConfig(configStr string) (parameterConfig, error) {
 
 	for _, paramStr := range strings.Split(configStr, ",") {
 		keyVal := strings.SplitN(paramStr, "=", 2)
-		if len(keyVal) != 2 { // nolint: mnd
+		if len(keyVal) != 2 {
 			panic("invalid config struct tag format")
 		}
 
@@ -333,14 +333,14 @@ func getEnvAsMap() map[string]string {
 
 func readEnv(fields []*field, config EnvConfig, vars map[string]string) error {
 	for _, f := range fields {
-		destinctEnvName := f.FullName(config.Separator)
+		distinctEnvName := f.FullName(config.Separator)
 		if config.Prefix != "" {
-			destinctEnvName = config.Prefix + config.Separator + destinctEnvName
+			distinctEnvName = config.Prefix + config.Separator + distinctEnvName
 		}
 
 		envNames := []string{
 			f.Config.DefaultEnvName,
-			destinctEnvName,
+			distinctEnvName,
 		}
 
 		for _, envName := range envNames {
@@ -411,7 +411,7 @@ func readPFlags(fields []*field, config FlagsConfig, args []string) error {
 	return nil
 }
 
-func setFromString(target reflect.Value, value string) (err error) {
+func setFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocylco // just huge switch case
 	defer func() {
 		if e := recover(); e != nil {
 			err = ErrUnsupportedType
@@ -507,8 +507,8 @@ func setFromString(target reflect.Value, value string) (err error) {
 	return nil
 }
 
-func unmarshal(fileSeperator string, bytes []byte) (*ciMap, error) {
-	m := newCiMap(WithSeparator(fileSeperator))
+func unmarshal(fileSeparator string, bytes []byte) (*ciMap, error) {
+	m := newCiMap(WithSeparator(fileSeparator))
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
 	}
@@ -524,7 +524,7 @@ func readFlagConfig(flagStr string) (flag, error) {
 	flagConf := flag{}
 	flags := strings.Split(flagStr, flagConfigSeparator)
 
-	if len(flags) > 2 { // nolint: gomnd
+	if len(flags) > 2 {
 		return flag{}, ErrMalformedFlagConfig
 	}
 

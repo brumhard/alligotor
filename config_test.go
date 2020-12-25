@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/brumhard/alligotor/test"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -233,7 +232,7 @@ test:
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
-				It("uses destinct name instead of overridden/default if both are set", func() {
+				It("uses distinct name instead of overridden/default if both are set", func() {
 					nestedFields[0].Config.Flag.DefaultName = "default"
 					err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
@@ -307,7 +306,7 @@ test:
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(nestedTarget.Sub.V).To(Equal(1234))
 				})
-				It("uses destinct name instead of overridden/default if both are set", func() {
+				It("uses distinct name instead of overridden/default if both are set", func() {
 					nestedFields[0].Config.DefaultEnvName = "DEFAULT"
 					err := readEnv(nestedFields, config, map[string]string{"DEFAULT": "1234", "SUB_PORT": "1235"})
 					Expect(err).ShouldNot(HaveOccurred())
@@ -432,7 +431,7 @@ test:
 						Expect(readFileMap(nestedFields, separator, m)).To(Succeed())
 						Expect(nestedTarget.Sub.V).To(Equal(1234))
 					})
-					It("uses destinct name instead of overridden/default if both are set", func() {
+					It("uses distinct name instead of overridden/default if both are set", func() {
 						nestedFields[0].Config.DefaultFileField = "default"
 						m.m = map[string]interface{}{"default": 1234, "sub": map[string]interface{}{"port": 1235}}
 
