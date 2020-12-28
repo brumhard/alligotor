@@ -539,7 +539,7 @@ func setFromString(target reflect.Value, value string) (err error) { // nolint: 
 }
 
 func unmarshal(fileSeparator string, bytes []byte) (*ciMap, error) {
-	m := newCiMap(WithSeparator(fileSeparator))
+	m := newCiMap(withSeparator(fileSeparator))
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
 	}

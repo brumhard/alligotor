@@ -14,15 +14,15 @@ type ciMap struct {
 	separator string
 }
 
-type MapOption func(*ciMap)
+type mapOption func(*ciMap)
 
-func WithSeparator(separator string) MapOption {
+func withSeparator(separator string) mapOption {
 	return func(c *ciMap) {
 		c.separator = separator
 	}
 }
 
-func newCiMap(options ...MapOption) *ciMap {
+func newCiMap(options ...mapOption) *ciMap {
 	newMap := &ciMap{m: make(map[string]interface{})}
 
 	for _, opt := range options {
