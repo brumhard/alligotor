@@ -40,6 +40,7 @@ const (
 	defaultFlagSeparator = "-"
 )
 
+// DefaultCollector is the default Collector and is used by Get.
 var DefaultCollector = &Collector{
 	Files: FilesConfig{
 		Locations: []string{"."},
@@ -58,6 +59,12 @@ var DefaultCollector = &Collector{
 	},
 }
 
+// Get is a wrapper around DefaultCollector.Get.
+// All configuration sources are enabled.
+// For environment variables it uses no prefix and "_" as the separator.
+// For flags it use "-" as the separator.
+// For config files it uses "config" as the basename and searches in the current directory.
+// It uses "." as the separator.
 func Get(v interface{}) error {
 	return DefaultCollector.Get(v)
 }
@@ -142,6 +149,12 @@ type flag struct {
 	ShortName   string
 }
 
+// Get is the main package function and can be used by its wrapper Get or on a defined Collector struct.
+// It expects a pointer to the config struct to write the config variables from the configured source to.
+// If the input param is not a pointer, Get will return an error.
+//
+// Get looks for config variables all sources that are not disabled.
+// Further usage details can be found in the examples or the Collector struct's documentation.
 func (c *Collector) Get(v interface{}) error {
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Ptr {
