@@ -403,8 +403,9 @@ type flagInfo struct {
 
 func readPFlags(fields []*field, config FlagsConfig, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	fieldToFlagInfo := make(map[*field][]*flagInfo)
+	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
+	fieldToFlagInfo := make(map[*field][]*flagInfo)
 	fieldCache := map[string]*flagInfo{}
 
 	for _, f := range fields {
