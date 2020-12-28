@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	ErrMalformedFlagConfig  = fmt.Errorf("malformed flag config strings")
-	ErrFileTypeNotSupported = fmt.Errorf("could not unmarshal file, file type not supported")
-	ErrPointerExpected      = fmt.Errorf("expected a pointer as input")
+	ErrMalformedFlagConfig  = errors.New("malformed flag config strings")
+	ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported")
+	ErrPointerExpected      = errors.New("expected a pointer as input")
 	ErrNoFileFound          = errors.New("no config file could be found")
 	ErrUnsupportedType      = errors.New("invalid type")
 	ErrCantSet              = errors.New("can't set value")
