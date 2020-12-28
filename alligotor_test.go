@@ -7,6 +7,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/brumhard/alligotor/test"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -141,6 +144,16 @@ test:
 			target := &struct{ V testType }{}
 			Expect(setFromString(wrappedValue(target), "mmh")).To(Succeed())
 			Expect(target.V).To(Equal(testType{S: "mmh"}))
+		})
+		It("sets zapcore.Level correctly", func() {
+			target := &struct{ V zapcore.Level }{}
+			Expect(setFromString(wrappedValue(target), "info")).To(Succeed())
+			Expect(target.V).To(Equal(zapcore.InfoLevel))
+		})
+		It("sets logrus.Level correctly", func() {
+			target := &struct{ V logrus.Level }{}
+			Expect(setFromString(wrappedValue(target), "info")).To(Succeed())
+			Expect(target.V).To(Equal(logrus.InfoLevel))
 		})
 	})
 	Context("field function", func() {
