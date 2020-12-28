@@ -341,6 +341,12 @@ func readFileMap(fields []*field, separator string, m *ciMap) error {
 					continue
 				}
 
+				// if the target is a struct there are also fields for the child properties and it should be tried
+				// to set these before returning an error
+				if f.Value.Kind() == reflect.Struct {
+					continue
+				}
+
 				return err
 			}
 
