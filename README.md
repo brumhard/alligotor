@@ -1,5 +1,9 @@
 # Alligotor
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/brumhard/alligotor)](https://goreportcard.com/report/github.com/brumhard/alligotor)
+[![Go Reference](https://pkg.go.dev/badge/github.com/brumhard/alligotor.svg)](https://pkg.go.dev/github.com/brumhard/alligotor)
+
+
 The zero configuration configuration package.
 
 ## Install
