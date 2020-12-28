@@ -41,7 +41,7 @@ const (
 )
 
 // DefaultCollector is the default Collector and is used by Get.
-var DefaultCollector = &Collector{
+var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just like in http package
 	Files: FilesConfig{
 		Locations: []string{"."},
 		BaseName:  "config",

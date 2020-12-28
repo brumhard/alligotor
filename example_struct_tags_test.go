@@ -33,7 +33,6 @@ type StructTagConfig struct {
 //
 // Also flags short and long name can be set in the struct tag.
 func Example_structTags() {
-
 	dir, _ := ioutil.TempDir("", "testing")
 	defer os.RemoveAll(dir)
 
