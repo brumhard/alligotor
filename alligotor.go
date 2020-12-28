@@ -40,31 +40,33 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-// NewDefault creates a new config collector with default settings.
-func NewDefault() *Collector {
-	return &Collector{
-		Files: FilesConfig{
-			Locations: []string{"."},
-			BaseName:  "config",
-			Separator: defaultFileSeparator,
-			Disabled:  false,
-		},
-		Env: EnvConfig{
-			Prefix:    "",
-			Separator: defaultEnvSeparator,
-			Disabled:  false,
-		},
-		Flags: FlagsConfig{
-			Separator: defaultFlagSeparator,
-			Disabled:  false,
-		},
-	}
+var DefaultCollector = &Collector{
+	Files: FilesConfig{
+		Locations: []string{"."},
+		BaseName:  "config",
+		Separator: defaultFileSeparator,
+		Disabled:  false,
+	},
+	Env: EnvConfig{
+		Prefix:    "",
+		Separator: defaultEnvSeparator,
+		Disabled:  false,
+	},
+	Flags: FlagsConfig{
+		Separator: defaultFlagSeparator,
+		Disabled:  false,
+	},
+}
+
+func Get(v interface{}) error {
+	return DefaultCollector.Get(v)
 }
 
 // Collector is the root struct that implements the main package api.
-// A default configuration for the collector can be generated with the NewDefault method.
-// Afterwards the only method that can be called is Collector.Get to unmarshal the found configuration
+// The only method that can be called is Collector.Get to unmarshal the found configuration
 // values from the configured sources into the provided struct.
+// If the default configuration suffices your needs you can just use the package level Get function instead
+// without initializing a new Collector struct.
 //
 // The order in which the different configuration sources overwrite each other is the following:
 // defaults -> config files -> environment variables -> command line flags
@@ -75,7 +77,7 @@ func NewDefault() *Collector {
 // the configuration sources will keep the preset value.
 //
 // Since environment variables and flags are purely text based it also supports types that implement
-// the encoding.TextUnmarshaler interface like for example zap.AtomicLevel and logrus.Level.
+// the encoding.TextUnmarshaler interface like for example zapcore.Level and logrus.Level.
 // On top of that custom implementations are already baked into the package to support
 // duration strings using time.ParseDuration() as well as string slices ([]string) in the format val1,val2,val3
 // and string maps (map[string]string) in the format key1=val1,key2=val2.
