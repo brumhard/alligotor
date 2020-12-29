@@ -77,7 +77,8 @@ func main() {
 }
 ```
 
-## TODO
+### TODO
 
 - Description for fields either in struct tags or in json schema
 - Support for other file formats
+- Benchmark against viper and other configuration packages for cold start scenarios
