@@ -2,36 +2,53 @@ package alligotor
 
 import (
 	"encoding/json"
-	"testing"
 
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func Test_ciMap_Get(t *testing.T) {
-	r := require.New(t)
-
-	jsonString := []byte(`{
+var _ = Describe("ciMap", func() {
+	var (
+		ciMap     *ciMap
+		jsonBytes = []byte(`{
 	"test": {
 		"innertest": "arrrr",
 		"innertest2": "pirate"
 	},
 	"test2": "idk"
 }`)
-
-	// nested
-	ciMap := newCiMap()
-	r.NoError(json.Unmarshal(jsonString, ciMap))
-	val, ok := ciMap.Get("test" + defaultSeparator + "innertest")
-	r.True(ok)
-	r.Equal("arrrr", val)
-
-	// case insensitive
-	val2, ok := ciMap.Get("test" + defaultSeparator + "INNERTEST2")
-	r.True(ok)
-	r.Equal("pirate", val2)
-
-	// in root
-	val3, ok := ciMap.Get("TEST2")
-	r.True(ok)
-	r.Equal("idk", val3)
-}
+	)
+	BeforeEach(func() {
+		ciMap = newCiMap()
+		Expect(json.Unmarshal(jsonBytes, ciMap)).To(Succeed())
+	})
+	Describe("Get", func() {
+		Context("nested", func() {
+			It("works", func() {
+				val, ok := ciMap.Get("test" + defaultSeparator + "innertest")
+				Expect(ok).To(BeTrue())
+				Expect(val).To(Equal("arrrr"))
+			})
+		})
+		Context("case insensitive", func() {
+			It("works", func() {
+				val, ok := ciMap.Get("test" + defaultSeparator + "INNERTEST2")
+				Expect(ok).To(BeTrue())
+				Expect(val).To(Equal("pirate"))
+			})
+		})
+		Context("in root", func() {
+			It("works", func() {
+				val, ok := ciMap.Get("TEST2")
+				Expect(ok).To(BeTrue())
+				Expect(val).To(Equal("idk"))
+			})
+		})
+		Context("key does not exist", func() {
+			It("should return ok=false", func() {
+				_, ok := ciMap.Get("not-existing")
+				Expect(ok).To(BeFalse())
+			})
+		})
+	})
+})
