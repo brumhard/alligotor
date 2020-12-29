@@ -7,15 +7,13 @@ import (
 	"time"
 
 	"github.com/brumhard/alligotor"
-	"go.uber.org/zap/zapcore"
 )
 
 type ExampleConfig struct {
 	SomeList []string
 	SomeMap  map[string]string
 	API      struct {
-		Enabled  bool
-		LogLevel zapcore.Level
+		Enabled bool
 	}
 	DB struct {
 		HostName string
@@ -28,7 +26,7 @@ func Example_customCollector() {
 	// Reading only from env vars in this example but it would also be possible
 	// to use config file in the current directory (by default).
 	// OS args don't have an effect in this example because the source is disabled in the collector.
-	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true", "--api-loglevel", "debug"}
+	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true"}
 	_ = os.Setenv("EXAMPLE::SOMEMAP", "a=a,b=b,c=c")
 	_ = os.Setenv("EXAMPLE::DB::HOSTNAME", "somedb")
 	_ = os.Setenv("EXAMPLE::DB::TIMEOUT", "1m0s")
@@ -58,5 +56,5 @@ func Example_customCollector() {
 	fmt.Println(cfg)
 
 	// Output:
-	// {[] map[a:a b:b c:c] {false info} {somedb 1m0s}}
+	// {[] map[a:a b:b c:c] {false} {somedb 1m0s}}
 }

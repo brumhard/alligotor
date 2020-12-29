@@ -7,15 +7,13 @@ import (
 	"time"
 
 	"github.com/brumhard/alligotor"
-	"go.uber.org/zap/zapcore"
 )
 
 type Config struct {
 	SomeList []string
 	SomeMap  map[string]string
 	API      struct {
-		Enabled  bool
-		LogLevel zapcore.Level
+		Enabled bool
 	}
 	DB struct {
 		HostName string
@@ -27,7 +25,7 @@ func Example() {
 	// Preconditions
 	// Reading from os args and env vars in this example but it would also be possible
 	// to use config file in the current directory (by default).
-	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true", "--api-loglevel", "debug"}
+	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true"}
 	_ = os.Setenv("SOMEMAP", "a=a,b=b,c=c")
 	_ = os.Setenv("DB_HOSTNAME", "somedb")
 	_ = os.Setenv("DB_TIMEOUT", "1m0s")
@@ -40,5 +38,5 @@ func Example() {
 	fmt.Println(cfg)
 
 	// Output:
-	// {[a b c] map[a:a b:b c:c] {true debug} {somedb 1m0s}}
+	// {[a b c] map[a:a b:b c:c] {true} {somedb 1m0s}}
 }

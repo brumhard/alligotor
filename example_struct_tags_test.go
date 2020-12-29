@@ -7,16 +7,15 @@ import (
 	"path"
 
 	"github.com/brumhard/alligotor"
-	"go.uber.org/zap/zapcore"
 )
 
 type StructTagConfig struct {
 	API struct {
-		Port     int           `config:"env=PORT,flag=p port"`
-		LogLevel zapcore.Level `config:"env=LOG,file=default.log"`
+		Port     int    `config:"env=PORT,flag=p port"`
+		LogLevel string `config:"env=LOG,file=default.log"`
 	}
 	DB struct {
-		LogLevel zapcore.Level `config:"env=LOG,file=default.log"`
+		LogLevel string `config:"env=LOG,file=default.log"`
 	}
 }
 
@@ -30,6 +29,9 @@ type StructTagConfig struct {
 // So in general in the defaults section of the json file all log levels can be set to debug but maybe the API needs
 // to be debugged so its loglevel can be explicitly set in the api object in the json.
 // You could also overwrite with the PREFIX_API_LOGLEVEL environment variable.
+//
+// Im this example type string is used as type for loglevel, but zapcore.Level and logrus.Level are also
+// supported out of the box. It's just not used here to mimize the package's dependencies.
 //
 // Also flags short and long name can be set in the struct tag.
 func Example_structTags() {
