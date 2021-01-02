@@ -94,6 +94,119 @@ type Collector struct {
 	Flags FlagsConfig
 }
 
+// New returns a new Collector.
+// Various options can be used to customize the result.
+// If no options are present the resulting Collector won't have any configuration sources and return
+// the input struct without any changes in the Collector.Get method.
+// Available options are:
+// - FromFiles to configure configuration files as input source
+// - FromEnvVars to configure environment variables as input source
+// - FromCLIFlags to configure command line flags as input source
+// Each of these options has an option itself to provide a custom separator.
+// They are named WithFileSeparator, WithEnvSeparator and WithFlagSeparator.
+func New(opts ...CollectorOption) *Collector {
+	c := &Collector{
+		Files: FilesConfig{
+			Disabled: true,
+		},
+		Env: EnvConfig{
+			Disabled: true,
+		},
+		Flags: FlagsConfig{
+			Disabled: true,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
+// CollectorOption takes a Collector as input and modifies it.
+type CollectorOption func(*Collector)
+
+// FromFiles is a option for New to enable configuration files as configuration source.
+// It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
+// FromFiles itself takes more options to customize the used separator (WithFileSeparator).
+func FromFiles(locations []string, baseName string, opts ...FileOption) CollectorOption {
+	return func(collector *Collector) {
+		collector.Files = FilesConfig{
+			Locations: locations,
+			BaseName:  baseName,
+			Separator: defaultFileSeparator,
+			Disabled:  false,
+		}
+
+		for _, opt := range opts {
+			opt(&collector.Files)
+		}
+	}
+}
+
+// FileOption takes a FilesConfig as input and modifies it.
+type FileOption func(*FilesConfig)
+
+// WithFileSeparator adds a custom separator to a FilesConfig struct.
+func WithFileSeparator(separator string) FileOption {
+	return func(config *FilesConfig) {
+		config.Separator = separator
+	}
+}
+
+// FromEnvVars is a option for New to enable environment variables as configuration source.
+// It takes the prefix for the used environment variables as input parameter.
+// FromEnvVars itself takes more options to customize the used separator (WithEnvSeparator).
+func FromEnvVars(prefix string, opts ...EnvOption) CollectorOption {
+	return func(collector *Collector) {
+		collector.Env = EnvConfig{
+			Prefix:    prefix,
+			Separator: defaultEnvSeparator,
+			Disabled:  false,
+		}
+
+		for _, opt := range opts {
+			opt(&collector.Env)
+		}
+	}
+}
+
+// EnvOption takes an EnvConfig as input and modifies it.
+type EnvOption func(*EnvConfig)
+
+// WithEnvSeparator adds a custom separator to an EnvConfig struct.
+func WithEnvSeparator(separator string) EnvOption {
+	return func(config *EnvConfig) {
+		config.Separator = separator
+	}
+}
+
+// FromCLIFlags is a option for New to enable command line flags as configuration source.
+// FromCLIFlags itself takes more options to customize the used separator (WithFlagSeparator).
+func FromCLIFlags(opts ...FlagOption) CollectorOption {
+	return func(collector *Collector) {
+		collector.Flags = FlagsConfig{
+			Separator: defaultFlagSeparator,
+			Disabled:  false,
+		}
+
+		for _, opt := range opts {
+			opt(&collector.Flags)
+		}
+	}
+}
+
+// FlagOption takes a FlagsConfig as input and modifies it.
+type FlagOption func(*FlagsConfig)
+
+// WithFlagSeparator adds a custom separator to a FlagsConfig struct.
+func WithFlagSeparator(separator string) FlagOption {
+	return func(config *FlagsConfig) {
+		config.Separator = separator
+	}
+}
+
 // FilesConfig is used to configure the configuration from files.
 // Locations can be used to define where to look for files with the defined BaseName.
 // Currently only json and yaml files are supported.

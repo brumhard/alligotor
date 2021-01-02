@@ -77,7 +77,37 @@ func main() {
 }
 ```
 
-### TODO
+## Custom setup
+As alligotor aims for good customizability, the Collector's constructor supports the functional options pattern.
+
+It is shown in the following example.
+
+```Go
+// all available sources
+_ = alligotor.New(
+    alligotor.FromEnvVars("TEST"),
+    alligotor.FromFiles([]string{"."}, "test_config"),
+    alligotor.FromCLIFlags(),
+)
+
+// only from env vars with prefix "TEST" and custom separator
+_ = alligotor.New(
+    alligotor.FromEnvVars(
+        "TEST",
+        alligotor.WithEnvSeparator("::"),
+    ),
+)
+```
+
+As shown in the latter example, the options also support an option themselves to set a custom separator.
+In case it is not set explicitly, it will be set to the defaults:
+
+- env vars: `_` (underscore)
+- cli flags: `-` (dash)
+- config files: `.` (dot) (only used for default fields)
+
+
+#### TODO
 
 - Description for fields either in struct tags or in json schema
 - Support for other file formats
