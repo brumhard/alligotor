@@ -16,7 +16,7 @@ go get github.com/brumhard/alligotor
 ## What is Alligotor?
 
 Alligotor is designed to be used as the configuration source for executables (not commands in a command line application)
-for example for apis or any other long running application that need a startup config.
+for example for apis or any other long-running application that need a startup config.
 
 It takes only a few lines of code to get going, and it supports:
 
@@ -35,10 +35,10 @@ There are a lot of configuration packages for Go that give you the ability to lo
 several sources like env vars, command line flags or config files.
 
 Alligotor was designed to have the least configuration effort possible while still keeping it customizable.
-That's why if you keep the package defaults you only need one function call and your config struct definition
-to fill this struct with values from environment variables, several config files and also command line flags.
+That's why if you keep the package defaults you only need one function call, and your config struct definition
+to fill this struct with values from environment variables, several config files and command line flags.
 
-Also default can default paths can be used to keep your configuration as small as possible.
+Also, default can default paths can be used to keep your configuration as small as possible.
 Default paths means that you set a name/path in the configuration source from which multiple fields take their
 value if they're not set in any other way.
 See this [example](example_struct_tags_test.go) for further information. 
