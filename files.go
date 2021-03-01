@@ -115,6 +115,7 @@ func readFileMap(fields []*Field, separator string, m *ciMap) error {
 					if err := SetFromString(f.Value(), valueString); err != nil {
 						return err
 					}
+
 					continue
 				}
 
@@ -132,7 +133,6 @@ func readFileMap(fields []*Field, separator string, m *ciMap) error {
 	}
 
 	return nil
-
 }
 
 func unmarshal(fileSeparator string, bytes []byte) (*ciMap, error) {
