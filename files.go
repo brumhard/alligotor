@@ -65,8 +65,6 @@ func WithFileSeparator(separator string) FileOption {
 }
 
 func (f *Files) Read(fields []*Field) error {
-	fileFound := false
-
 	for _, fileLocation := range f.config.Locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
@@ -78,8 +76,6 @@ func (f *Files) Read(fields []*Field) error {
 			if strings.TrimSuffix(name, path.Ext(name)) != f.config.BaseName {
 				continue
 			}
-
-			fileFound = true
 
 			fileBytes, err := ioutil.ReadFile(path.Join(fileLocation, name))
 			if err != nil {
@@ -95,10 +91,6 @@ func (f *Files) Read(fields []*Field) error {
 				return err
 			}
 		}
-	}
-
-	if !fileFound {
-		return ErrNoFileFound
 	}
 
 	return nil

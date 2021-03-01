@@ -21,7 +21,7 @@ const tag = "config"
 
 // DefaultCollector is the default Collector and is used by Get.
 var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just like in http package
-	sources: []ConfigSource{
+	Sources: []ConfigSource{
 		&Files{config: &FilesConfig{
 			Locations: []string{"."},
 			BaseName:  "config",
@@ -67,7 +67,7 @@ func Get(v interface{}) error {
 // duration strings using time.ParseDuration() as well as string slices ([]string) in the format val1,val2,val3
 // and string maps (map[string]string) in the format key1=val1,key2=val2.
 type Collector struct {
-	sources []ConfigSource
+	Sources []ConfigSource
 }
 
 // New returns a new Collector.
@@ -81,7 +81,7 @@ type Collector struct {
 // Each of these options has an option itself to provide a custom separator.
 // They are named WithFileSeparator, WithEnvSeparator and WithFlagSeparator.
 func New(sources ...ConfigSource) *Collector {
-	return &Collector{sources: sources}
+	return &Collector{Sources: sources}
 }
 
 // Get is the main package function and can be used by its wrapper Get or on a defined Collector struct.
@@ -104,7 +104,7 @@ func (c *Collector) Get(v interface{}) error {
 		return err
 	}
 
-	for _, source := range c.sources {
+	for _, source := range c.Sources {
 		if err := source.Read(fields); err != nil {
 			return err
 		}
