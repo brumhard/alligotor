@@ -32,19 +32,13 @@ func Example_customCollector() {
 	_ = os.Setenv("EXAMPLE::DB::TIMEOUT", "1m0s")
 
 	collector := alligotor.Collector{
-		Files: alligotor.FilesConfig{
-			Locations: []string{"./", "/etc/example/,", "~/.example/"},
-			BaseName:  "example_config",
-			Separator: ".",
-			Disabled:  false,
-		},
-		Env: alligotor.EnvConfig{
-			Prefix:    "EXAMPLE",
-			Separator: "::",
-			Disabled:  false,
-		},
-		Flags: alligotor.FlagsConfig{
-			Disabled: true,
+		Sources: []alligotor.ConfigSource{
+			alligotor.NewFiles(
+				[]string{"./", "/etc/example/,", "~/.example/"},
+				"example_config",
+				alligotor.WithFileSeparator("."),
+			),
+			alligotor.NewEnv("EXAMPLE", alligotor.WithEnvSeparator("::")),
 		},
 	}
 

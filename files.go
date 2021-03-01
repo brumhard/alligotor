@@ -17,10 +17,7 @@ const (
 	defaultFileSeparator = "."
 )
 
-var (
-	ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported")
-	ErrNoFileFound          = errors.New("no config file could be found")
-)
+var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported")
 
 type Files struct {
 	config *FilesConfig
