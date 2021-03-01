@@ -81,65 +81,65 @@ test:
 			})
 		})
 	})
-	Describe("setFromString", func() {
+	Describe("SetFromString", func() {
 		It("sets anything to zero value if input is empty string", func() {
 			target := &struct{ V testType }{testType{S: "testing"}}
-			Expect(setFromString(wrappedValue(target), "")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "")).To(Succeed())
 			Expect(target.V).To(Equal(testType{}))
 		})
 		It("sets durations correctly", func() {
 			target := &struct{ V time.Duration }{}
-			Expect(setFromString(wrappedValue(target), "2s")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "2s")).To(Succeed())
 			Expect(target.V).To(Equal(2 * time.Second))
 		})
 		It("sets dates correctly", func() {
 			target := &struct{ V time.Time }{}
-			Expect(setFromString(wrappedValue(target), "2007-01-02T15:04:05Z")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "2007-01-02T15:04:05Z")).To(Succeed())
 			Expect(target.V).To(BeEquivalentTo(time.Date(2007, 1, 2, 15, 4, 5, 0, time.UTC)))
 		})
 		It("sets int types correctly", func() {
 			target := &struct{ V int }{}
-			Expect(setFromString(wrappedValue(target), "69")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "69")).To(Succeed())
 			Expect(target.V).To(Equal(69))
 		})
 		It("sets booleans correctly", func() {
 			target := &struct{ V bool }{}
-			Expect(setFromString(wrappedValue(target), "true")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "true")).To(Succeed())
 			Expect(target.V).To(Equal(true))
 		})
 		It("sets complex types correctly", func() {
 			target := &struct{ V complex128 }{}
-			Expect(setFromString(wrappedValue(target), "2+3i")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "2+3i")).To(Succeed())
 			Expect(target.V).To(Equal(complex(2, 3)))
 		})
 		It("sets uint types correctly", func() {
 			target := &struct{ V uint }{}
-			Expect(setFromString(wrappedValue(target), "420")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "420")).To(Succeed())
 			Expect(target.V).To(Equal(uint(420)))
 		})
 		It("sets float types correctly", func() {
 			target := &struct{ V float64 }{}
-			Expect(setFromString(wrappedValue(target), "2.34")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "2.34")).To(Succeed())
 			Expect(target.V).To(Equal(2.34))
 		})
 		It("sets strings correctly", func() {
 			target := &struct{ V string }{}
-			Expect(setFromString(wrappedValue(target), "whoop")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "whoop")).To(Succeed())
 			Expect(target.V).To(Equal("whoop"))
 		})
 		It("sets []string correctly", func() {
 			target := &struct{ V []string }{}
-			Expect(setFromString(wrappedValue(target), "wow,insane")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "wow,insane")).To(Succeed())
 			Expect(target.V).To(Equal([]string{"wow", "insane"}))
 		})
 		It("sets map[string]string correctly", func() {
 			target := &struct{ V map[string]string }{}
-			Expect(setFromString(wrappedValue(target), "wow=insane")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "wow=insane")).To(Succeed())
 			Expect(target.V).To(Equal(map[string]string{"wow": "insane"}))
 		})
 		It("sets TextUnmarshaler correctly", func() {
 			target := &struct{ V testType }{}
-			Expect(setFromString(wrappedValue(target), "mmh")).To(Succeed())
+			Expect(SetFromString(wrappedValue(target), "mmh")).To(Succeed())
 			Expect(target.V).To(Equal(testType{S: "mmh"}))
 		})
 	})
