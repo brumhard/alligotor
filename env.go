@@ -3,6 +3,7 @@ package alligotor
 import (
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 type EnvSource struct {
 	prefix    string
 	separator string
+	// lazily loaded
+	envMap map[string]string
+	once   sync.Once
 }
 
 // FromEnvVars is a option for New to enable environment variables as configuration source.
@@ -48,35 +52,43 @@ func WithEnvSeparator(separator string) EnvOption {
 	}
 }
 
-func (s *EnvSource) Read(fields []*Field) error {
-	return s.readEnv(fields, getEnvAsMap())
+func (s *EnvSource) Read(field *Field) ([]byte, error) {
+	if s.envMap == nil {
+		s.once.Do(s.setup)
+	}
+	return s.readEnv(field)
 }
 
-func (s *EnvSource) readEnv(fields []*Field, vars map[string]string) error {
-	for _, f := range fields {
-		distinctEnvName := f.FullName(s.separator)
-		if s.prefix != "" {
-			distinctEnvName = s.prefix + s.separator + distinctEnvName
-		}
+func (s *EnvSource) setup() {
+	s.envMap = getEnvAsMap()
+}
 
-		envNames := []string{
-			f.Configs[envKey],
-			distinctEnvName,
-		}
-
-		for _, envName := range envNames {
-			envVal, ok := vars[strings.ToUpper(envName)]
-			if !ok {
-				continue
-			}
-
-			if err := SetFromString(f.Value(), envVal); err != nil {
-				return err
-			}
-		}
+func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
+	distinctEnvName := f.FullName(s.separator)
+	if s.prefix != "" {
+		distinctEnvName = s.prefix + s.separator + distinctEnvName
 	}
 
-	return nil
+	envNames := []string{
+		f.Configs[envKey],
+		distinctEnvName,
+	}
+
+	finalVal := ""
+	for _, envName := range envNames {
+		envVal, ok := s.envMap[strings.ToUpper(envName)]
+		if !ok {
+			continue
+		}
+
+		finalVal = envVal
+	}
+
+	if finalVal == "" {
+		return nil, nil
+	}
+
+	return []byte(finalVal), nil
 }
 
 func getEnvAsMap() map[string]string {

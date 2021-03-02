@@ -2,6 +2,8 @@ package alligotor
 
 import (
 	"encoding"
+	"encoding/json"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -24,7 +26,6 @@ var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just lik
 	Sources: []ConfigSource{
 		NewFilesSource([]string{"."}, "config"),
 		NewEnvSource(""),
-		NewFlagsSource(),
 	},
 }
 
@@ -96,8 +97,25 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	for _, source := range c.Sources {
-		if err := source.Read(fields); err != nil {
-			return err
+		for _, field := range fields {
+			value, err := source.Read(field)
+			if err != nil {
+				return err
+			}
+
+			if value == nil {
+				continue
+			}
+
+			if err := set(field.value, value); err != nil {
+				return err
+			}
+		}
+
+		if closer, ok := source.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -117,8 +135,8 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 		}
 
 		fields = append(fields, &Field{
-			base:    base,
-			name:    fieldType.Name,
+			Base:    base,
+			Name:    fieldType.Name,
 			value:   fieldValue,
 			Configs: fieldConfig,
 		})
@@ -170,7 +188,44 @@ func readParameterConfig(configStr string) (map[string]string, error) {
 	return fieldConfig, nil
 }
 
-func SetFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocyclo // just huge switch case
+func set(target reflect.Value, value []byte) error {
+	receivedev := reflect.New(target.Type())
+
+	var err error
+	switch target.Interface().(type) {
+	case string:
+		value = []byte(strconv.Quote(string(value)))
+	case time.Duration:
+		dur, err := time.ParseDuration(string(value))
+		if err != nil {
+			break
+		}
+
+		value, err = json.Marshal(dur)
+	case []string:
+		strSlice := stringSlice{}
+		_ = strSlice.UnmarshalText(value)
+
+		value, err = json.Marshal([]string(strSlice))
+	case map[string]string:
+		strMap := stringMap{}
+		_ = strMap.UnmarshalText(value)
+
+		value, err = json.Marshal(map[string]string(strMap))
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(value, receivedev.Interface()); err != nil {
+		return err
+	}
+
+	target.Set(receivedev.Elem())
+	return nil
+}
+
+func setFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocyclo // just huge switch case
 	defer func() {
 		if e := recover(); e != nil {
 			err = ErrUnsupportedType

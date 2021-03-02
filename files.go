@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path"
-	"reflect"
 	"strings"
+	"sync"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -28,6 +27,9 @@ type FilesSource struct {
 	locations []string
 	baseName  string
 	separator string
+	// lazy loading
+	once     sync.Once
+	fileMaps []*ciMap
 }
 
 // NewFilesSource is a option for New to enable configuration files as configuration source.
@@ -57,26 +59,40 @@ func WithFileSeparator(separator string) FileOption {
 	}
 }
 
-func (s *FilesSource) Read(fields []*Field) error {
+func (s *FilesSource) Read(f *Field) ([]byte, error) {
+	if s.fileMaps == nil {
+		s.once.Do(s.setup)
+	}
+
+	var finalVal []byte
+	for _, m := range s.fileMaps {
+		val, err := readFileMap(f, m, s.separator)
+		if err != nil {
+			return nil, err
+		}
+
+		finalVal = val
+	}
+
+	return finalVal, nil
+}
+
+func (s *FilesSource) setup() {
 	files := findFiles(s.locations, s.baseName)
 
 	for _, filePath := range files {
 		fileBytes, err := ioutil.ReadFile(path.Join(filePath))
 		if err != nil {
-			return err
+			continue
 		}
 
 		m, err := unmarshal(fileBytes, s.separator)
 		if err != nil {
-			return err
+			continue
 		}
 
-		if err := readFileMap(fields, m, s.separator); err != nil {
-			return err
-		}
+		s.fileMaps = append(s.fileMaps, m)
 	}
-
-	return nil
 }
 
 func findFiles(locations []string, baseName string) []string {
@@ -113,44 +129,26 @@ func unmarshal(bytes []byte, fileSeparator string) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFileMap(fields []*Field, m *ciMap, separator string) error {
-	for _, f := range fields {
-		fieldNames := []string{
-			f.Configs[fileKey],
-			f.FullName(separator),
-		}
-
-		for _, fieldName := range fieldNames {
-			valueForField, ok := m.Get(fieldName)
-			if !ok {
-				continue
-			}
-
-			fieldTypeZero := reflect.Zero(f.Value().Type())
-			v := fieldTypeZero.Interface()
-
-			if err := mapstructure.Decode(valueForField, &v); err != nil {
-				// if theres a type mismatch check if value is a string and try to use SetFromString (e.g. for duration strings)
-				if valueString, ok := valueForField.(string); ok {
-					if err := SetFromString(f.Value(), valueString); err != nil {
-						return err
-					}
-
-					continue
-				}
-
-				// if the target is a struct there are also fields for the child properties and it should be tried
-				// to set these before returning an error
-				if f.Value().Kind() == reflect.Struct {
-					continue
-				}
-
-				return err
-			}
-
-			f.Value().Set(reflect.ValueOf(v))
-		}
+func readFileMap(f *Field, m *ciMap, separator string) ([]byte, error) {
+	fieldNames := []string{
+		f.Configs[fileKey],
+		f.FullName(separator),
 	}
 
-	return nil
+	var finalVal []byte
+	for _, fieldName := range fieldNames {
+		valueForField, ok := m.Get(fieldName)
+		if !ok {
+			continue
+		}
+
+		valueBytes, err := json.Marshal(valueForField)
+		if err != nil {
+			return nil, err
+		}
+
+		finalVal = valueBytes
+	}
+
+	return finalVal, nil
 }

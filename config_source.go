@@ -6,21 +6,17 @@ import (
 )
 
 type Field struct {
-	base  []string
-	name  string
+	Base  []string
+	Name  string
 	value reflect.Value
 	// Configs contains structtag key -> value string
 	Configs map[string]string
 }
 
 func (f *Field) FullName(separator string) string {
-	return strings.Join(append(f.base, f.name), separator)
-}
-
-func (f *Field) Value() reflect.Value {
-	return f.value
+	return strings.Join(append(f.Base, f.Name), separator)
 }
 
 type ConfigSource interface {
-	Read(fields []*Field) error
+	Read(field *Field) ([]byte, error)
 }

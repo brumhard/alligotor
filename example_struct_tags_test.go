@@ -11,11 +11,11 @@ import (
 
 type StructTagConfig struct {
 	API struct {
-		Port     int    `config:"env=PORT,flag=p port"`
-		LogLevel string `config:"env=LOG,file=default.log"`
+		Port     int
+		LogLevel string `config:"file=default.log"`
 	}
 	DB struct {
-		LogLevel string `config:"env=LOG,file=default.log"`
+		LogLevel string `config:"file=default.log"`
 	}
 }
 
@@ -51,12 +51,9 @@ func Example_structTags() {
 	filePath := path.Join(dir, "example_config.json")
 	_ = ioutil.WriteFile(filePath, jsonBytes, 0600)
 
-	os.Args = []string{"cmdName", "-p", "2345"}
-
 	collector := alligotor.New(
 		alligotor.NewFilesSource([]string{dir}, "example_config", alligotor.WithFileSeparator(".")),
 		alligotor.NewEnvSource("PREFIX", alligotor.WithEnvSeparator("_")),
-		alligotor.NewFlagsSource(alligotor.WithFlagSeparator(".")),
 	)
 
 	var cfg StructTagConfig
@@ -65,5 +62,5 @@ func Example_structTags() {
 	fmt.Println(cfg)
 
 	// Output:
-	// {{2345 debug} {error}}
+	// {{1234 debug} {error}}
 }
