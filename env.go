@@ -48,15 +48,15 @@ func WithEnvSeparator(separator string) EnvOption {
 	}
 }
 
-func (e *EnvSource) Read(fields []*Field) error {
-	return e.readEnv(fields, getEnvAsMap())
+func (s *EnvSource) Read(fields []*Field) error {
+	return s.readEnv(fields, getEnvAsMap())
 }
 
-func (e *EnvSource) readEnv(fields []*Field, vars map[string]string) error {
+func (s *EnvSource) readEnv(fields []*Field, vars map[string]string) error {
 	for _, f := range fields {
-		distinctEnvName := f.FullName(e.separator)
-		if e.prefix != "" {
-			distinctEnvName = e.prefix + e.separator + distinctEnvName
+		distinctEnvName := f.FullName(s.separator)
+		if s.prefix != "" {
+			distinctEnvName = s.prefix + s.separator + distinctEnvName
 		}
 
 		envNames := []string{

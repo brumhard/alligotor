@@ -21,11 +21,16 @@ var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 // If Disabled is true the configuration from flags is skipped.
 type FlagsSource struct {
 	separator string
+	flagSet   *pflag.FlagSet
 }
 
 func NewFlagsSource(opts ...FlagOption) *FlagsSource {
+	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
+	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
+
 	flags := &FlagsSource{
 		separator: defaultFlagSeparator,
+		flagSet:   flagSet,
 	}
 
 	for _, opt := range opts {
@@ -45,8 +50,8 @@ func WithFlagSeparator(separator string) FlagOption {
 	}
 }
 
-func (fl *FlagsSource) Read(fields []*Field) error {
-	return fl.readPFlags(fields, os.Args[1:])
+func (s *FlagsSource) Read(fields []*Field) error {
+	return s.readPFlags(fields, os.Args[1:])
 }
 
 type flagInfo struct {
@@ -54,10 +59,7 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func (fl *FlagsSource) readPFlags(fields []*Field, args []string) error {
-	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
-
+func (s *FlagsSource) readPFlags(fields []*Field, args []string) error {
 	fieldToFlagInfo := make(map[*Field][]*flagInfo)
 	fieldCache := map[string]*flagInfo{}
 
@@ -68,13 +70,13 @@ func (fl *FlagsSource) readPFlags(fields []*Field, args []string) error {
 		}
 
 		defaultName := flagConfig.DefaultName
-		longName := strings.ToLower(f.FullName(fl.separator))
+		longName := strings.ToLower(f.FullName(s.separator))
 
 		defaultFlag, ok := fieldCache[defaultName]
 		if !ok {
 			defaultFlag = &flagInfo{
-				valueStr: flagSet.StringP(defaultName, "", "", "default"),
-				flag:     flagSet.Lookup(defaultName),
+				valueStr: s.flagSet.StringP(defaultName, "", "", "default"),
+				flag:     s.flagSet.Lookup(defaultName),
 			}
 			fieldCache[defaultName] = defaultFlag
 		}
@@ -82,13 +84,13 @@ func (fl *FlagsSource) readPFlags(fields []*Field, args []string) error {
 		fieldToFlagInfo[f] = []*flagInfo{
 			defaultFlag,
 			{
-				valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),
-				flag:     flagSet.Lookup(longName),
+				valueStr: s.flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),
+				flag:     s.flagSet.Lookup(longName),
 			},
 		}
 	}
 
-	if err := flagSet.Parse(args); err != nil {
+	if err := s.flagSet.Parse(args); err != nil {
 		return err
 	}
 

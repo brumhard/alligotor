@@ -57,8 +57,31 @@ func WithFileSeparator(separator string) FileOption {
 	}
 }
 
-func (f *FilesSource) Read(fields []*Field) error {
-	for _, fileLocation := range f.locations {
+func (s *FilesSource) Read(fields []*Field) error {
+	files := findFiles(s.locations, s.baseName)
+
+	for _, filePath := range files {
+		fileBytes, err := ioutil.ReadFile(path.Join(filePath))
+		if err != nil {
+			return err
+		}
+
+		m, err := unmarshal(fileBytes, s.separator)
+		if err != nil {
+			return err
+		}
+
+		if err := readFileMap(fields, m, s.separator); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func findFiles(locations []string, baseName string) []string {
+	var filePaths []string
+	for _, fileLocation := range locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
 			continue
@@ -66,30 +89,31 @@ func (f *FilesSource) Read(fields []*Field) error {
 
 		for _, fileInfo := range fileInfos {
 			name := fileInfo.Name()
-			if strings.TrimSuffix(name, path.Ext(name)) != f.baseName {
+			if strings.TrimSuffix(name, path.Ext(name)) != baseName {
 				continue
 			}
 
-			fileBytes, err := ioutil.ReadFile(path.Join(fileLocation, name))
-			if err != nil {
-				return err
-			}
-
-			m, err := unmarshal(f.separator, fileBytes)
-			if err != nil {
-				return err
-			}
-
-			if err := readFileMap(fields, f.separator, m); err != nil {
-				return err
-			}
+			filePaths = append(filePaths, path.Join(fileLocation, name))
 		}
 	}
 
-	return nil
+	return filePaths
 }
 
-func readFileMap(fields []*Field, separator string, m *ciMap) error {
+func unmarshal(bytes []byte, fileSeparator string) (*ciMap, error) {
+	m := newCiMap(withSeparator(fileSeparator))
+	if err := yaml.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	if err := json.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	return nil, ErrFileTypeNotSupported
+}
+
+func readFileMap(fields []*Field, m *ciMap, separator string) error {
 	for _, f := range fields {
 		fieldNames := []string{
 			f.Configs[fileKey],
@@ -129,17 +153,4 @@ func readFileMap(fields []*Field, separator string, m *ciMap) error {
 	}
 
 	return nil
-}
-
-func unmarshal(fileSeparator string, bytes []byte) (*ciMap, error) {
-	m := newCiMap(withSeparator(fileSeparator))
-	if err := yaml.Unmarshal(bytes, m); err == nil {
-		return m, nil
-	}
-
-	if err := json.Unmarshal(bytes, m); err == nil {
-		return m, nil
-	}
-
-	return nil, ErrFileTypeNotSupported
 }
