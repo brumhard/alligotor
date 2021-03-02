@@ -22,18 +22,9 @@ const tag = "config"
 // DefaultCollector is the default Collector and is used by Get.
 var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just like in http package
 	Sources: []ConfigSource{
-		&Files{config: &FilesConfig{
-			Locations: []string{"."},
-			BaseName:  "config",
-			Separator: defaultFileSeparator,
-		}},
-		&Env{config: &EnvConfig{
-			Prefix:    "",
-			Separator: defaultEnvSeparator,
-		}},
-		&Flags{config: &FlagsConfig{
-			Separator: defaultFlagSeparator,
-		}},
+		NewFilesSource([]string{"."}, "config"),
+		NewEnvSource(""),
+		NewFlagsSource(),
 	},
 }
 

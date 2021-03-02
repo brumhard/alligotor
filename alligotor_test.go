@@ -1,6 +1,7 @@
 package alligotor
 
 import (
+	"github.com/brumhard/alligotor/sources"
 	"io/ioutil"
 	"os"
 	"path"
@@ -16,13 +17,13 @@ var _ = Describe("config", func() {
 	Describe("readFlagConfig", func() {
 		Context("invalid input", func() {
 			It("should return err on more than 3 sets", func() {
-				_, err := readFlagConfig("a b c")
+				_, err := sources.readFlagConfig("a b c")
 				Expect(err).Should(HaveOccurred())
 				Expect(err).To(Equal(ErrMalformedFlagConfig))
 			})
 			It("should return error if longname has less than 2 letters", func() {
 				for _, configStr := range []string{"a b", "long long"} {
-					_, err := readFlagConfig(configStr)
+					_, err := sources.readFlagConfig(configStr)
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(Equal(ErrMalformedFlagConfig))
 				}
@@ -31,20 +32,20 @@ var _ = Describe("config", func() {
 		Context("valid input", func() {
 			It("should return valid flag when short and long are set", func() {
 				for _, configStr := range []string{"a awd", "awd a"} {
-					f, err := readFlagConfig(configStr)
+					f, err := sources.readFlagConfig(configStr)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(f).To(Equal(flag{ShortName: "a", DefaultName: "awd"}))
+					Expect(f).To(Equal(sources.flag{ShortName: "a", DefaultName: "awd"}))
 				}
 			})
 			It("should return valid flag when only short is set", func() {
-				f, err := readFlagConfig("a")
+				f, err := sources.readFlagConfig("a")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(f).To(Equal(flag{ShortName: "a", DefaultName: ""}))
+				Expect(f).To(Equal(sources.flag{ShortName: "a", DefaultName: ""}))
 			})
 			It("should return valid flag when only long is set", func() {
-				f, err := readFlagConfig("awd")
+				f, err := sources.readFlagConfig("awd")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(f).To(Equal(flag{ShortName: "", DefaultName: "awd"}))
+				Expect(f).To(Equal(sources.flag{ShortName: "", DefaultName: "awd"}))
 			})
 		})
 	})
@@ -59,7 +60,7 @@ var _ = Describe("config", func() {
 test:
  sub: lel
 `)
-				yamlMap, err := unmarshal(defaultFileSeparator, yamlBytes)
+				yamlMap, err := sources.unmarshal(sources.defaultFileSeparator, yamlBytes)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(yamlMap.m).To(Equal(expectedMap))
 			})
@@ -67,7 +68,7 @@ test:
 		Context("json", func() {
 			It("should succeed with valid input", func() {
 				jsonBytes := []byte(`{"test": {"sub": "lel"}}`)
-				jsonMap, err := unmarshal(defaultFileSeparator, jsonBytes)
+				jsonMap, err := sources.unmarshal(sources.defaultFileSeparator, jsonBytes)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(jsonMap.m).To(Equal(expectedMap))
 			})
@@ -75,7 +76,7 @@ test:
 		Context("not supported", func() {
 			It("should fail with random input", func() {
 				randomBytes := []byte("i don't know what I'm doing here")
-				_, err := unmarshal(defaultFileSeparator, randomBytes)
+				_, err := sources.unmarshal(sources.defaultFileSeparator, randomBytes)
 				Expect(err).Should(HaveOccurred())
 				Expect(err).To(Equal(ErrFileTypeNotSupported))
 			})
@@ -184,7 +185,7 @@ test:
 
 		//	Describe("readPFlags", func() {
 		//		config := FlagsConfig{
-		//			Separator: "-",
+		//			separator: "-",
 		//			Disabled:  false,
 		//		}
 		//
@@ -251,7 +252,7 @@ test:
 		//		BeforeEach(func() {
 		//			config = EnvConfig{
 		//				Prefix:    "",
-		//				Separator: "_",
+		//				separator: "_",
 		//				Disabled:  false,
 		//			}
 		//		})
@@ -334,9 +335,9 @@ test:
 		//
 		//				baseFileName = "testing"
 		//				config = FilesConfig{
-		//					Locations: []string{dir},
-		//					BaseName:  baseFileName,
-		//					Separator: separator,
+		//					locations: []string{dir},
+		//					baseName:  baseFileName,
+		//					separator: separator,
 		//					Disabled:  false,
 		//				}
 		//			})
@@ -531,9 +532,9 @@ test:
 				fileBaseName = "config"
 
 				c = New(
-					NewFiles([]string{tempDir}, fileBaseName),
-					NewEnv(""),
-					NewFlags(WithFlagSeparator("-")),
+					NewFilesSource([]string{tempDir}, fileBaseName),
+					NewEnvSource(""),
+					NewFlagsSource(WithFlagSeparator("-")),
 				)
 			})
 			AfterEach(func() {
@@ -582,7 +583,7 @@ test:
 					// capture os.Args
 					args = os.Args
 					// capture env
-					env = getEnvAsMap()
+					env = sources.getEnvAsMap()
 				})
 				AfterEach(func() {
 					// recover os.Args

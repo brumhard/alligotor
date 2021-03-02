@@ -54,9 +54,9 @@ func Example_structTags() {
 	os.Args = []string{"cmdName", "-p", "2345"}
 
 	collector := alligotor.New(
-		alligotor.NewFiles([]string{dir}, "example_config", alligotor.WithFileSeparator(".")),
-		alligotor.NewEnv("PREFIX", alligotor.WithEnvSeparator("_")),
-		alligotor.NewFlags(alligotor.WithFlagSeparator(".")),
+		alligotor.NewFilesSource([]string{dir}, "example_config", alligotor.WithFileSeparator(".")),
+		alligotor.NewEnvSource("PREFIX", alligotor.WithEnvSeparator("_")),
+		alligotor.NewFlagsSource(alligotor.WithFlagSeparator(".")),
 	)
 
 	var cfg StructTagConfig

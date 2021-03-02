@@ -19,50 +19,46 @@ const (
 
 var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported")
 
-type Files struct {
-	config *FilesConfig
-}
-
 // FilesConfig is used to configure the configuration from files.
-// Locations can be used to define where to look for files with the defined BaseName.
+// locations can be used to define where to look for files with the defined baseName.
 // Currently only json and yaml files are supported.
-// The Separator is used for nested structs.
+// The separator is used for nested structs.
 // If Disabled is true the configuration from files is skipped.
-type FilesConfig struct {
-	Locations []string
-	BaseName  string
-	Separator string
+type FilesSource struct {
+	locations []string
+	baseName  string
+	separator string
 }
 
-// NewFiles is a option for New to enable configuration files as configuration source.
+// NewFilesSource is a option for New to enable configuration files as configuration source.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
-// NewFiles itself takes more options to customize the used separator (WithFileSeparator).
-func NewFiles(locations []string, baseName string, opts ...FileOption) *Files {
-	filesConfig := &FilesConfig{
-		Locations: locations,
-		BaseName:  baseName,
-		Separator: defaultFileSeparator,
+// NewFilesSource itself takes more options to customize the used separator (WithFileSeparator).
+func NewFilesSource(locations []string, baseName string, opts ...FileOption) *FilesSource {
+	files := &FilesSource{
+		locations: locations,
+		baseName:  baseName,
+		separator: defaultFileSeparator,
 	}
 
 	for _, opt := range opts {
-		opt(filesConfig)
+		opt(files)
 	}
 
-	return &Files{config: filesConfig}
+	return files
 }
 
 // FileOption takes a FilesConfig as input and modifies it.
-type FileOption func(*FilesConfig)
+type FileOption func(*FilesSource)
 
 // WithFileSeparator adds a custom separator to a FilesConfig struct.
 func WithFileSeparator(separator string) FileOption {
-	return func(config *FilesConfig) {
-		config.Separator = separator
+	return func(files *FilesSource) {
+		files.separator = separator
 	}
 }
 
-func (f *Files) Read(fields []*Field) error {
-	for _, fileLocation := range f.config.Locations {
+func (f *FilesSource) Read(fields []*Field) error {
+	for _, fileLocation := range f.locations {
 		fileInfos, err := ioutil.ReadDir(fileLocation)
 		if err != nil {
 			continue
@@ -70,7 +66,7 @@ func (f *Files) Read(fields []*Field) error {
 
 		for _, fileInfo := range fileInfos {
 			name := fileInfo.Name()
-			if strings.TrimSuffix(name, path.Ext(name)) != f.config.BaseName {
+			if strings.TrimSuffix(name, path.Ext(name)) != f.baseName {
 				continue
 			}
 
@@ -79,12 +75,12 @@ func (f *Files) Read(fields []*Field) error {
 				return err
 			}
 
-			m, err := unmarshal(f.config.Separator, fileBytes)
+			m, err := unmarshal(f.separator, fileBytes)
 			if err != nil {
 				return err
 			}
 
-			if err := readFileMap(fields, f.config.Separator, m); err != nil {
+			if err := readFileMap(fields, f.separator, m); err != nil {
 				return err
 			}
 		}

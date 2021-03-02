@@ -16,40 +16,36 @@ const (
 
 var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 
-type Flags struct {
-	config *FlagsConfig
-}
-
 // FlagsConfig is used to configure the configuration from command line flags.
-// Separator is used for nested structs to construct flag names from parent and child properties recursively.
+// separator is used for nested structs to construct flag names from parent and child properties recursively.
 // If Disabled is true the configuration from flags is skipped.
-type FlagsConfig struct {
-	Separator string
+type FlagsSource struct {
+	separator string
 }
 
-func NewFlags(opts ...FlagOption) *Flags {
-	flagsConfig := &FlagsConfig{
-		Separator: defaultFlagSeparator,
+func NewFlagsSource(opts ...FlagOption) *FlagsSource {
+	flags := &FlagsSource{
+		separator: defaultFlagSeparator,
 	}
 
 	for _, opt := range opts {
-		opt(flagsConfig)
+		opt(flags)
 	}
 
-	return &Flags{config: flagsConfig}
+	return flags
 }
 
 // FlagOption takes a FlagsConfig as input and modifies it.
-type FlagOption func(*FlagsConfig)
+type FlagOption func(*FlagsSource)
 
 // WithFlagSeparator adds a custom separator to a FlagsConfig struct.
 func WithFlagSeparator(separator string) FlagOption {
-	return func(config *FlagsConfig) {
-		config.Separator = separator
+	return func(flags *FlagsSource) {
+		flags.separator = separator
 	}
 }
 
-func (fl *Flags) Read(fields []*Field) error {
+func (fl *FlagsSource) Read(fields []*Field) error {
 	return fl.readPFlags(fields, os.Args[1:])
 }
 
@@ -58,7 +54,7 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func (fl *Flags) readPFlags(fields []*Field, args []string) error {
+func (fl *FlagsSource) readPFlags(fields []*Field, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
@@ -72,7 +68,7 @@ func (fl *Flags) readPFlags(fields []*Field, args []string) error {
 		}
 
 		defaultName := flagConfig.DefaultName
-		longName := strings.ToLower(f.FullName(fl.config.Separator))
+		longName := strings.ToLower(f.FullName(fl.separator))
 
 		defaultFlag, ok := fieldCache[defaultName]
 		if !ok {
