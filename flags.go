@@ -20,8 +20,9 @@ var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 // separator is used for nested structs to construct flag names from parent and child properties recursively.
 // If Disabled is true the configuration from flags is skipped.
 type FlagsSource struct {
-	separator string
-	flagSet   *pflag.FlagSet
+	separator  string
+	flagSet    *pflag.FlagSet
+	fieldCache map[string]*flagInfo
 }
 
 func NewFlagsSource(opts ...FlagOption) *FlagsSource {
@@ -29,8 +30,9 @@ func NewFlagsSource(opts ...FlagOption) *FlagsSource {
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
 	flags := &FlagsSource{
-		separator: defaultFlagSeparator,
-		flagSet:   flagSet,
+		separator:  defaultFlagSeparator,
+		flagSet:    flagSet,
+		fieldCache: map[string]*flagInfo{},
 	}
 
 	for _, opt := range opts {
@@ -61,7 +63,6 @@ type flagInfo struct {
 
 func (s *FlagsSource) readPFlags(fields []*Field, args []string) error {
 	fieldToFlagInfo := make(map[*Field][]*flagInfo)
-	fieldCache := map[string]*flagInfo{}
 
 	for _, f := range fields {
 		flagConfig, err := readFlagConfig(f.Configs[flagKey])
@@ -72,13 +73,13 @@ func (s *FlagsSource) readPFlags(fields []*Field, args []string) error {
 		defaultName := flagConfig.DefaultName
 		longName := strings.ToLower(f.FullName(s.separator))
 
-		defaultFlag, ok := fieldCache[defaultName]
+		defaultFlag, ok := s.fieldCache[defaultName]
 		if !ok {
 			defaultFlag = &flagInfo{
 				valueStr: s.flagSet.StringP(defaultName, "", "", "default"),
 				flag:     s.flagSet.Lookup(defaultName),
 			}
-			fieldCache[defaultName] = defaultFlag
+			s.fieldCache[defaultName] = defaultFlag
 		}
 
 		fieldToFlagInfo[f] = []*flagInfo{
