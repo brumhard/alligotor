@@ -1,7 +1,6 @@
 package alligotor
 
 import (
-	"encoding"
 	"encoding/json"
 	"reflect"
 	"strconv"
@@ -122,7 +121,11 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
+
 		fieldValue := reflect.Indirect(value.Field(i))
+		if !fieldValue.IsValid() {
+			fieldValue = value.Field(i)
+		}
 
 		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(tag))
 		if err != nil {
@@ -204,20 +207,58 @@ func set(target reflect.Value, value interface{}) error {
 }
 
 func fromString(target reflect.Value, value string) (interface{}, error) {
-	switch target.Interface().(type) {
+	specialVal, err := specialTypes(target, value)
+	if err != nil {
+		return nil, err
+	}
+
+	if specialVal != nil {
+		return specialVal, nil
+	}
+
+	if target.Type().Implements(textUnmarshaler) || target.Addr().Type().Implements(textUnmarshaler) {
+		// use json capabilities to use TextUnmarshaler interface
+		value = strconv.Quote(value)
+	}
+
+	receivedev := reflect.New(target.Type())
+
+	if err := json.Unmarshal([]byte(value), receivedev.Interface()); err != nil {
+		return nil, err
+	}
+
+	return receivedev.Elem().Interface(), nil
+}
+
+func specialTypes(target reflect.Value, value string) (finalVal interface{}, err error) {
+	switch target.Type() {
 	// special cases with special parsing on top of json capabilities
-	case time.Duration:
+	case durationType:
 		return time.ParseDuration(value)
-	case time.Time:
+	case durationPtrType:
+		dur, err := time.ParseDuration(value)
+		if err != nil {
+			return nil, err
+		}
+
+		return &dur, nil
+	case timeType:
 		return time.Parse(time.RFC3339, value)
-	case []string:
+	case timePtrType:
+		t, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return nil, err
+		}
+
+		return &t, nil
+	case stringSliceType:
 		strSlice := stringSlice{}
 		if err := strSlice.UnmarshalText([]byte(value)); err != nil {
 			return nil, err
 		}
 
 		return []string(strSlice), nil
-	case map[string]string:
+	case stringMapType:
 		strMap := stringMap{}
 		if err := strMap.UnmarshalText([]byte(value)); err != nil {
 			return nil, err
@@ -225,29 +266,13 @@ func fromString(target reflect.Value, value string) (interface{}, error) {
 
 		return map[string]string(strMap), nil
 	// must not be read by json Unmarshal since that would lead to an error for not quoted string value
-	case string:
+	case stringType:
 		return value, nil
-	default:
-		// use json capabilities to use TextUnmarshaler interface
-		_, isTextUnmarshaler := target.Interface().(encoding.TextUnmarshaler)
-		_, pointerIsTextUnmarshaler := target.Addr().Interface().(encoding.TextUnmarshaler)
-
-		if isTextUnmarshaler || pointerIsTextUnmarshaler {
-			value = strconv.Quote(value)
-		}
+	case stringPtrType:
+		return &value, nil
 	}
 
-	receivedev := reflect.New(target.Type())
-	if target.Kind() == reflect.Ptr {
-		receivedev = reflect.Zero(target.Type())
-	}
-
-	err := json.Unmarshal([]byte(value), receivedev.Interface())
-	if err != nil {
-		return nil, err
-	}
-
-	return receivedev.Elem().Interface(), nil
+	return nil, nil
 }
 
 func trySet(target, value reflect.Value) error {
