@@ -3,7 +3,6 @@ package alligotor
 import (
 	"os"
 	"strings"
-	"sync"
 )
 
 const (
@@ -21,9 +20,7 @@ const (
 type EnvSource struct {
 	prefix    string
 	separator string
-	// lazily loaded
-	envMap map[string]string
-	once   sync.Once
+	envMap    map[string]string
 }
 
 // FromEnvVars is a option for New to enable environment variables as configuration source.
@@ -52,15 +49,13 @@ func WithEnvSeparator(separator string) EnvOption {
 	}
 }
 
-func (s *EnvSource) Read(field *Field) ([]byte, error) {
-	if s.envMap == nil {
-		s.once.Do(s.setup)
-	}
-	return s.readEnv(field)
+func (s *EnvSource) Init(_ []*Field) error {
+	s.envMap = getEnvAsMap()
+	return nil
 }
 
-func (s *EnvSource) setup() {
-	s.envMap = getEnvAsMap()
+func (s *EnvSource) Read(field *Field) (interface{}, error) {
+	return s.readEnv(field)
 }
 
 func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
@@ -75,6 +70,7 @@ func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
 	}
 
 	finalVal := ""
+
 	for _, envName := range envNames {
 		envVal, ok := s.envMap[strings.ToUpper(envName)]
 		if !ok {

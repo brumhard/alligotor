@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path"
+	"reflect"
 	"strings"
-	"sync"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -27,9 +29,7 @@ type FilesSource struct {
 	locations []string
 	baseName  string
 	separator string
-	// lazy loading
-	once     sync.Once
-	fileMaps []*ciMap
+	fileMaps  []*ciMap
 }
 
 // NewFilesSource is a option for New to enable configuration files as configuration source.
@@ -59,25 +59,7 @@ func WithFileSeparator(separator string) FileOption {
 	}
 }
 
-func (s *FilesSource) Read(f *Field) ([]byte, error) {
-	if s.fileMaps == nil {
-		s.once.Do(s.setup)
-	}
-
-	var finalVal []byte
-	for _, m := range s.fileMaps {
-		val, err := readFileMap(f, m, s.separator)
-		if err != nil {
-			return nil, err
-		}
-
-		finalVal = val
-	}
-
-	return finalVal, nil
-}
-
-func (s *FilesSource) setup() {
+func (s *FilesSource) Init(_ []*Field) error {
 	files := findFiles(s.locations, s.baseName)
 
 	for _, filePath := range files {
@@ -93,6 +75,23 @@ func (s *FilesSource) setup() {
 
 		s.fileMaps = append(s.fileMaps, m)
 	}
+
+	return nil
+}
+
+func (s *FilesSource) Read(f *Field) (interface{}, error) {
+	var finalVal interface{}
+
+	for _, m := range s.fileMaps {
+		val, err := readFileMap(f, m, s.separator)
+		if err != nil {
+			return nil, err
+		}
+
+		finalVal = val
+	}
+
+	return finalVal, nil
 }
 
 func findFiles(locations []string, baseName string) []string {
@@ -129,26 +128,37 @@ func unmarshal(bytes []byte, fileSeparator string) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFileMap(f *Field, m *ciMap, separator string) ([]byte, error) {
+func readFileMap(f *Field, m *ciMap, separator string) (interface{}, error) {
 	fieldNames := []string{
 		f.Configs[fileKey],
 		f.FullName(separator),
 	}
 
-	var finalVal []byte
+	var finalVal interface{}
+
 	for _, fieldName := range fieldNames {
 		valueForField, ok := m.Get(fieldName)
 		if !ok {
 			continue
 		}
 
-		valueBytes, err := json.Marshal(valueForField)
-		if err != nil {
-			return nil, err
-		}
-
-		finalVal = valueBytes
+		finalVal = valueForField
 	}
 
-	return finalVal, nil
+	if finalVal == nil {
+		return nil, nil
+	}
+
+	fieldTypeNew := reflect.New(f.Type())
+
+	if err := mapstructure.Decode(finalVal, fieldTypeNew.Interface()); err != nil {
+		// if theres a type mismatch check if value is a string so maybe it can be parsed
+		if valueString, ok := finalVal.(string); ok {
+			return valueString, nil
+		}
+
+		return nil, err
+	}
+
+	return fieldTypeNew.Elem().Interface(), nil
 }

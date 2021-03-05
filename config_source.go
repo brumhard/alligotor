@@ -17,6 +17,17 @@ func (f *Field) FullName(separator string) string {
 	return strings.Join(append(f.Base, f.Name), separator)
 }
 
+func (f *Field) Type() reflect.Type {
+	return f.value.Type()
+}
+
 type ConfigSource interface {
-	Read(field *Field) ([]byte, error)
+	Read(field *Field) (interface{}, error)
+}
+
+type ConfigSourceInitializer interface {
+	// Init should be called right before Read to initialize stuff.
+	// Some things shouldn't be initialized in the constructor since the environment or files (the config source)
+	// could be altered in the time between constructing a config source and calling the Read method.
+	Init(fields []*Field) error
 }

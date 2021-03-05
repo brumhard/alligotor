@@ -1,9 +1,7 @@
 package alligotor
 
 import (
-	"encoding"
 	"encoding/json"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,7 +13,6 @@ import (
 var (
 	ErrPointerExpected    = errors.New("expected a pointer as input")
 	ErrUnsupportedType    = errors.New("invalid type")
-	ErrCantSet            = errors.New("can't set value")
 	ErrDuplicateConfigKey = errors.New("key already used for a config source")
 )
 
@@ -97,23 +94,19 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	for _, source := range c.Sources {
-		for _, field := range fields {
-			value, err := source.Read(field)
-			if err != nil {
-				return err
-			}
-
-			if value == nil {
-				continue
-			}
-
-			if err := set(field.value, value); err != nil {
+		if initializer, ok := source.(ConfigSourceInitializer); ok {
+			if err := initializer.Init(fields); err != nil {
 				return err
 			}
 		}
 
-		if closer, ok := source.(io.Closer); ok {
-			if err := closer.Close(); err != nil {
+		for _, field := range fields {
+			fieldVal, err := source.Read(field)
+			if err != nil {
+				return err
+			}
+
+			if err := set(field.value, fieldVal); err != nil {
 				return err
 			}
 		}
@@ -188,134 +181,71 @@ func readParameterConfig(configStr string) (map[string]string, error) {
 	return fieldConfig, nil
 }
 
-func set(target reflect.Value, value []byte) error {
-	receivedev := reflect.New(target.Type())
+func set(target reflect.Value, value interface{}) error {
+	if value == nil {
+		return nil
+	}
 
-	var err error
-	switch target.Interface().(type) {
-	case string:
-		value = []byte(strconv.Quote(string(value)))
-	case time.Duration:
-		dur, err := time.ParseDuration(string(value))
-		if err != nil {
-			break
+	if bytes, ok := value.([]byte); ok {
+		if bytes == nil {
+			return nil
 		}
 
-		value, err = json.Marshal(dur)
-	case []string:
-		strSlice := stringSlice{}
-		_ = strSlice.UnmarshalText(value)
-
-		value, err = json.Marshal([]string(strSlice))
-	case map[string]string:
-		strMap := stringMap{}
-		_ = strMap.UnmarshalText(value)
-
-		value, err = json.Marshal(map[string]string(strMap))
-	}
-	if err != nil {
-		return err
+		var err error
+		value, err = fromString(target, string(bytes))
+		if err != nil {
+			return err
+		}
 	}
 
-	if err := json.Unmarshal(value, receivedev.Interface()); err != nil {
-		return err
-	}
-
-	target.Set(receivedev.Elem())
-	return nil
+	return trySet(target, reflect.ValueOf(value))
 }
 
-func setFromString(target reflect.Value, value string) (err error) { // nolint: funlen,gocyclo // just huge switch case
-	defer func() {
-		if e := recover(); e != nil {
-			err = ErrUnsupportedType
-		}
-	}()
-
-	if !target.CanSet() {
-		return ErrCantSet
-	}
-
-	if value == "" {
-		zeroValue := reflect.Zero(target.Type())
-		target.Set(zeroValue)
-
-		return nil
-	}
-
-	var valToSet interface{}
-
+func fromString(target reflect.Value, value string) (interface{}, error) {
 	switch target.Interface().(type) {
-	case int, int8, int16, int32, int64:
-		intVal, err := strconv.ParseInt(value, 10, 0)
-		if err != nil {
-			return err
-		}
-
-		target.SetInt(intVal)
-
-		return nil
-	case complex64, complex128:
-		complexVal, err := strconv.ParseComplex(value, 0)
-		if err != nil {
-			return err
-		}
-
-		target.SetComplex(complexVal)
-
-		return nil
-	case uint, uint8, uint16, uint32, uint64:
-		uintVal, err := strconv.ParseUint(value, 10, 0)
-		if err != nil {
-			return err
-		}
-
-		target.SetUint(uintVal)
-
-		return nil
-	case float32, float64:
-		floatVal, err := strconv.ParseFloat(value, 0)
-		if err != nil {
-			return err
-		}
-
-		target.SetFloat(floatVal)
-
-		return nil
+	// special cases with special parsing on top of json capabilities
 	case time.Duration:
-		valToSet, err = time.ParseDuration(value)
+		return time.ParseDuration(value)
 	case time.Time:
-		valToSet, err = time.Parse(time.RFC3339, value)
-	case bool:
-		valToSet, err = strconv.ParseBool(value)
-	case string:
-		valToSet = value
+		return time.Parse(time.RFC3339, value)
 	case []string:
 		strSlice := stringSlice{}
-		_ = strSlice.UnmarshalText([]byte(value))
-
-		valToSet = []string(strSlice)
-	case map[string]string:
-		strMap := stringMap{}
-		_ = strMap.UnmarshalText([]byte(value))
-
-		valToSet = map[string]string(strMap)
-	case encoding.TextUnmarshaler:
-		return target.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value))
-	default:
-		// check if Addr implements TextUnmarshaler interface
-		if t, ok := target.Addr().Interface().(encoding.TextUnmarshaler); ok {
-			return t.UnmarshalText([]byte(value))
+		if err := strSlice.UnmarshalText([]byte(value)); err != nil {
+			return nil, err
 		}
 
-		valToSet = value
+		return []string(strSlice), nil
+	case map[string]string:
+		strMap := stringMap{}
+		if err := strMap.UnmarshalText([]byte(value)); err != nil {
+			return nil, err
+		}
+
+		return map[string]string(strMap), nil
+	// must not be read by json Unmarshal since that would lead to an error for not quoted string value
+	case string:
+		return value, nil
+	default:
+		// use json capabilities to use TextUnmarshaler interface
+		value = strconv.Quote(value)
 	}
 
+	receivedev := reflect.New(target.Type())
+
+	err := json.Unmarshal([]byte(value), receivedev.Interface())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	target.Set(reflect.ValueOf(valToSet))
+	return receivedev.Elem().Interface(), nil
+}
+
+func trySet(target, value reflect.Value) error {
+	target.Set(value)
+
+	if e := recover(); e != nil {
+		return ErrUnsupportedType
+	}
 
 	return nil
 }
