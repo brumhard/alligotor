@@ -533,6 +533,7 @@ var _ = Describe("config", func() {
 				c = New(
 					NewFilesSource([]string{tempDir}, fileBaseName),
 					NewEnvSource(""),
+					NewFlagsSource(),
 				)
 			})
 			AfterEach(func() {

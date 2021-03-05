@@ -154,7 +154,7 @@ func readFileMap(f *Field, m *ciMap, separator string) (interface{}, error) {
 	if err := mapstructure.Decode(finalVal, fieldTypeNew.Interface()); err != nil {
 		// if theres a type mismatch check if value is a string so maybe it can be parsed
 		if valueString, ok := finalVal.(string); ok {
-			return valueString, nil
+			return []byte(valueString), nil
 		}
 
 		return nil, err
