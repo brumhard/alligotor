@@ -1,6 +1,7 @@
 package alligotor
 
 import (
+	"encoding"
 	"encoding/json"
 	"reflect"
 	"strconv"
@@ -23,6 +24,7 @@ var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just lik
 	Sources: []ConfigSource{
 		NewFilesSource([]string{"."}, "config"),
 		NewEnvSource(""),
+		NewFlagsSource(),
 	},
 }
 
@@ -227,10 +229,18 @@ func fromString(target reflect.Value, value string) (interface{}, error) {
 		return value, nil
 	default:
 		// use json capabilities to use TextUnmarshaler interface
-		value = strconv.Quote(value)
+		_, isTextUnmarshaler := target.Interface().(encoding.TextUnmarshaler)
+		_, pointerIsTextUnmarshaler := target.Addr().Interface().(encoding.TextUnmarshaler)
+
+		if isTextUnmarshaler || pointerIsTextUnmarshaler {
+			value = strconv.Quote(value)
+		}
 	}
 
 	receivedev := reflect.New(target.Type())
+	if target.Kind() == reflect.Ptr {
+		receivedev = reflect.Zero(target.Type())
+	}
 
 	err := json.Unmarshal([]byte(value), receivedev.Interface())
 	if err != nil {

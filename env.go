@@ -69,7 +69,7 @@ func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
 		distinctEnvName,
 	}
 
-	finalVal := ""
+	var finalVal []byte
 
 	for _, envName := range envNames {
 		envVal, ok := s.envMap[strings.ToUpper(envName)]
@@ -77,14 +77,14 @@ func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
 			continue
 		}
 
-		finalVal = envVal
+		finalVal = []byte(envVal)
 	}
 
-	if finalVal == "" {
+	if finalVal == nil {
 		return nil, nil
 	}
 
-	return []byte(finalVal), nil
+	return finalVal, nil
 }
 
 func getEnvAsMap() map[string]string {
