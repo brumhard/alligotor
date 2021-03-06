@@ -85,31 +85,35 @@ func (s *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
 	fieldCache := map[string]*flagInfo{}
+
 	for _, f := range fields {
 		flagConfig, err := readFlagConfig(f.Configs[flagKey])
 		if err != nil {
 			return err
 		}
 
+		var flagInfos []*flagInfo
+
 		defaultName := flagConfig.DefaultName
+		if defaultName != "" {
+			defaultFlag, ok := fieldCache[defaultName]
+			if !ok {
+				defaultFlag = &flagInfo{
+					valueStr: flagSet.StringP(defaultName, "", "", "default"),
+					flag:     flagSet.Lookup(defaultName),
+				}
+				fieldCache[defaultName] = defaultFlag
+			}
+
+			flagInfos = append(flagInfos, defaultFlag)
+		}
+
 		longName := strings.ToLower(f.FullName(s.Separator))
 
-		defaultFlag, ok := fieldCache[defaultName]
-		if !ok {
-			defaultFlag = &flagInfo{
-				valueStr: flagSet.StringP(defaultName, "", "", "default"),
-				flag:     flagSet.Lookup(defaultName),
-			}
-			fieldCache[defaultName] = defaultFlag
-		}
-
-		s.fieldToFlagInfos[f.FullName(s.Separator)] = []*flagInfo{
-			defaultFlag,
-			{
-				valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),
-				flag:     flagSet.Lookup(longName),
-			},
-		}
+		s.fieldToFlagInfos[f.FullName(s.Separator)] = append(flagInfos, &flagInfo{
+			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),
+			flag:     flagSet.Lookup(longName),
+		})
 	}
 
 	return flagSet.Parse(args)

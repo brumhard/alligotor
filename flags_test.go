@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("FlagsSource", func() {
+var _ = Describe("flags", func() {
 	Describe("readFlagConfig", func() {
 		Context("invalid input", func() {
 			It("should return err on more than 3 sets", func() {
@@ -41,67 +41,104 @@ var _ = Describe("FlagsSource", func() {
 			})
 		})
 	})
-	//	Describe("readPFlags", func() {
-	//		config := FlagsConfig{
-	//			separator: "-",
-	//			Disabled:  false,
-	//		}
-	//
-	//		It("uses name as default flag name", func() {
-	//			err := readPFlags(fields, config, []string{"--port", "3000"})
-	//			Expect(err).ShouldNot(HaveOccurred())
-	//			Expect(target.V).To(Equal(3000))
-	//		})
-	//		It("uses configured long name", func() {
-	//			fields[0].Config.Flag.DefaultName = "overwrite"
-	//			err := readPFlags(fields, config, []string{"--overwrite", "3000"})
-	//			Expect(err).ShouldNot(HaveOccurred())
-	//			Expect(target.V).To(Equal(3000))
-	//		})
-	//		It("uses configured short name", func() {
-	//			fields[0].Config.Flag.ShortName = "o"
-	//			err := readPFlags(fields, config, []string{"-o", "3000"})
-	//			Expect(err).ShouldNot(HaveOccurred())
-	//			Expect(target.V).To(Equal(3000))
-	//		})
-	//		It("doesn't overwrite with empty value if not set", func() {
-	//			target.V = 3000
-	//			err := readPFlags(fields, config, []string{})
-	//			Expect(err).ShouldNot(HaveOccurred())
-	//			Expect(target.V).To(Equal(3000))
-	//		})
-	//		It("overwrites with empty value if set to empty", func() {
-	//			target.V = 3000
-	//			err := readPFlags(fields, config, []string{"--port", ""})
-	//			Expect(err).ShouldNot(HaveOccurred())
-	//			Expect(target.V).To(Equal(0))
-	//		})
-	//		Context("nested", func() {
-	//			It("uses separator", func() {
-	//				err := readPFlags(nestedFields, config, []string{"--sub-port", "1234"})
-	//				Expect(err).ShouldNot(HaveOccurred())
-	//				Expect(nestedTarget.Sub.V).To(Equal(1234))
-	//			})
-	//			It("can use defaults", func() {
-	//				nestedFields[0].Config.Flag.DefaultName = "default"
-	//				err := readPFlags(nestedFields, config, []string{"--default", "1234"})
-	//				Expect(err).ShouldNot(HaveOccurred())
-	//				Expect(nestedTarget.Sub.V).To(Equal(1234))
-	//			})
-	//			It("uses distinct name instead of overridden/default if both are set", func() {
-	//				nestedFields[0].Config.Flag.DefaultName = "default"
-	//				err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
-	//				Expect(err).ShouldNot(HaveOccurred())
-	//				Expect(nestedTarget.Sub.V).To(Equal(1235))
-	//			})
-	//			It("works if multiple fields are trying to get the same default flag", func() {
-	//				nestedFields[0].Config.Flag.DefaultName = "default"
-	//				nestedFields[1].Config.Flag.DefaultName = "default"
-	//				err := readPFlags(nestedFields, config, []string{"--default", "1234", "--sub-port", "1235"})
-	//				Expect(err).ShouldNot(HaveOccurred())
-	//				Expect(nestedTarget.Sub.V).To(Equal(1235))
-	//				Expect(nestedTarget.Sub.W).To(Equal(1234))
-	//			})
-	//		})
-	//	})
+	Describe("FlagsSource", func() {
+		var (
+			s         *FlagsSource
+			field     *Field
+			fields    []*Field
+			separator = "-"
+			name      = "name"
+			flagName  = "--" + name
+		)
+		BeforeEach(func() {
+			s = &FlagsSource{
+				Separator:        separator,
+				fieldToFlagInfos: map[string][]*flagInfo{},
+			}
+			field = &Field{Name: name}
+			fields = []*Field{field}
+		})
+		Describe("initFlagMap", func() {
+			It("contains flag for field and does not create empty flag if no default is set", func() {
+				Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
+
+				flagInfos, ok := s.fieldToFlagInfos[field.FullName(separator)]
+				Expect(ok).To(BeTrue())
+				Expect(flagInfos).To(HaveLen(1))
+				Expect(*flagInfos[0].valueStr).To(Equal("3000"))
+			})
+			It("also contains default flag if set", func() {
+				field.Configs = map[string]string{flagKey: "overwrite"}
+				Expect(s.initFlagMap(fields, []string{flagName, "3000", "--overwrite", "4000"})).To(Succeed())
+
+				flagInfos, ok := s.fieldToFlagInfos[field.FullName(separator)]
+				Expect(ok).To(BeTrue())
+				Expect(flagInfos).To(HaveLen(2))
+				Expect(*flagInfos[0].valueStr).To(Equal("4000"))
+				Expect(*flagInfos[1].valueStr).To(Equal("3000"))
+			})
+		})
+		Describe("Read", func() {
+			It("returns nil if not set", func() {
+				Expect(s.initFlagMap(fields, []string{})).To(Succeed())
+				val, err := s.Read(field)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(BeNil())
+			})
+			It("returns empty string if set to empty string", func() {
+				Expect(s.initFlagMap(fields, []string{flagName, ""})).To(Succeed())
+				val, err := s.Read(field)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(Equal([]byte("")))
+			})
+			It("uses name as normal flag name", func() {
+				Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
+				val, err := s.Read(field)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(Equal([]byte("3000")))
+			})
+			It("uses configured long name", func() {
+				field.Configs = map[string]string{flagKey: "overwrite"}
+				Expect(s.initFlagMap(fields, []string{"--overwrite", "3000"})).To(Succeed())
+				val, err := s.Read(field)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(Equal([]byte("3000")))
+			})
+			It("uses configured short name", func() {
+				field.Configs = map[string]string{flagKey: "o"}
+				Expect(s.initFlagMap(fields, []string{"-o", "3000"})).To(Succeed())
+				val, err := s.Read(field)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(Equal([]byte("3000")))
+			})
+			Context("nested", func() {
+				var base = "base"
+				BeforeEach(func() {
+					field.Base = []string{base}
+					flagName = "--" + base + separator + name
+				})
+				It("uses separator", func() {
+					Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
+					val, err := s.Read(field)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(val).To(Equal([]byte("3000")))
+				})
+				It("can use defaults", func() {
+					field.Configs = map[string]string{flagKey: "overwrite"}
+					Expect(s.initFlagMap(fields, []string{"--overwrite", "3000"})).To(Succeed())
+					val, err := s.Read(field)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(val).To(Equal([]byte("3000")))
+				})
+				It("uses distinct name instead of overridden/default if both are set", func() {
+					field.Configs = map[string]string{flagKey: "overwrite"}
+					Expect(s.initFlagMap(fields, []string{"--overwrite", "1234", flagName, "1235"})).To(Succeed())
+					val, err := s.Read(field)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(val).To(Equal([]byte("1235")))
+				})
+			})
+		})
+	})
+
 })
