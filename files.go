@@ -2,7 +2,7 @@ package alligotor
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -18,7 +18,7 @@ const (
 	defaultFileSeparator = "."
 )
 
-var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported")
+var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported or malformed content")
 
 // FilesConfig is used to configure the configuration from files.
 // locations can be used to define where to look for files with the defined baseName.
@@ -63,7 +63,7 @@ func (s *FilesSource) Init(_ []*Field) error {
 	files := findFiles(s.locations, s.baseName)
 
 	for _, filePath := range files {
-		fileBytes, err := ioutil.ReadFile(path.Join(filePath))
+		fileBytes, err := os.ReadFile(path.Join(filePath))
 		if err != nil {
 			continue
 		}
@@ -96,8 +96,9 @@ func (s *FilesSource) Read(f *Field) (interface{}, error) {
 
 func findFiles(locations []string, baseName string) []string {
 	var filePaths []string
+
 	for _, fileLocation := range locations {
-		fileInfos, err := ioutil.ReadDir(fileLocation)
+		fileInfos, err := os.ReadDir(fileLocation)
 		if err != nil {
 			continue
 		}

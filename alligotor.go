@@ -87,6 +87,7 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	t := reflect.Indirect(value)
+	// TODO: check if t is a struct, otherwise return err
 
 	// collect info about fields with tags, value...
 	fields, err := getFieldsConfigsFromValue(t)

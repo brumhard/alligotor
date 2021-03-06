@@ -2,7 +2,6 @@ package alligotor_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -35,7 +34,7 @@ type StructTagConfig struct {
 //
 // Also flags short and long name can be set in the struct tag.
 func Example_structTags() {
-	dir, _ := ioutil.TempDir("", "testing")
+	dir, _ := os.MkdirTemp("", "testing")
 	defer os.RemoveAll(dir)
 
 	jsonBytes := []byte(`{
@@ -49,7 +48,7 @@ func Example_structTags() {
 }`)
 
 	filePath := path.Join(dir, "example_config.json")
-	_ = ioutil.WriteFile(filePath, jsonBytes, 0600)
+	_ = os.WriteFile(filePath, jsonBytes, 0600)
 
 	collector := alligotor.New(
 		alligotor.NewFilesSource([]string{dir}, "example_config", alligotor.WithFileSeparator(".")),

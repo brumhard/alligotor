@@ -47,12 +47,12 @@ func WithFlagSeparator(separator string) FlagOption {
 	}
 }
 
-func (fl *FlagsSource) Init(fields []*Field) error {
-	return fl.initFlagMap(fields, os.Args[1:])
+func (s *FlagsSource) Init(fields []*Field) error {
+	return s.initFlagMap(fields, os.Args[1:])
 }
 
-func (fl *FlagsSource) Read(field *Field) (interface{}, error) {
-	flagInfos, ok := fl.fieldToFlagInfos[field.FullName(fl.Separator)]
+func (s *FlagsSource) Read(field *Field) (interface{}, error) {
+	flagInfos, ok := s.fieldToFlagInfos[field.FullName(s.Separator)]
 	if !ok {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func (fl *FlagsSource) initFlagMap(fields []*Field, args []string) error {
+func (s *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
@@ -92,7 +92,7 @@ func (fl *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 		}
 
 		defaultName := flagConfig.DefaultName
-		longName := strings.ToLower(f.FullName(fl.Separator))
+		longName := strings.ToLower(f.FullName(s.Separator))
 
 		defaultFlag, ok := fieldCache[defaultName]
 		if !ok {
@@ -103,7 +103,7 @@ func (fl *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 			fieldCache[defaultName] = defaultFlag
 		}
 
-		fl.fieldToFlagInfos[f.FullName(fl.Separator)] = []*flagInfo{
+		s.fieldToFlagInfos[f.FullName(s.Separator)] = []*flagInfo{
 			defaultFlag,
 			{
 				valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),

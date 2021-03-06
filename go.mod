@@ -1,6 +1,6 @@
 module github.com/brumhard/alligotor
 
-go 1.15
+go 1.16
 
 require (
 	github.com/mitchellh/mapstructure v1.3.3
