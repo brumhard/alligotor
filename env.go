@@ -55,13 +55,13 @@ func (s *EnvSource) Init(_ []*Field) error {
 }
 
 func (s *EnvSource) Read(field *Field) (interface{}, error) {
-	return s.readEnv(field)
+	return readEnv(field, s.prefix, s.envMap, s.separator), nil
 }
 
-func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
-	distinctEnvName := f.FullName(s.separator)
-	if s.prefix != "" {
-		distinctEnvName = s.prefix + s.separator + distinctEnvName
+func readEnv(f *Field, prefix string, envMap map[string]string, separator string) []byte {
+	distinctEnvName := f.FullName(separator)
+	if prefix != "" {
+		distinctEnvName = prefix + separator + distinctEnvName
 	}
 
 	envNames := []string{
@@ -72,7 +72,7 @@ func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
 	var finalVal []byte
 
 	for _, envName := range envNames {
-		envVal, ok := s.envMap[strings.ToUpper(envName)]
+		envVal, ok := envMap[strings.ToUpper(envName)]
 		if !ok {
 			continue
 		}
@@ -81,10 +81,10 @@ func (s *EnvSource) readEnv(f *Field) ([]byte, error) {
 	}
 
 	if finalVal == nil {
-		return nil, nil
+		return nil
 	}
 
-	return finalVal, nil
+	return finalVal
 }
 
 func getEnvAsMap() map[string]string {

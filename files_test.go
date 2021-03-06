@@ -81,11 +81,7 @@ test:
 		Context("nested", func() {
 			var base = "base"
 			BeforeEach(func() {
-				field = &Field{
-					Base:  []string{base},
-					Name:  name,
-					value: reflect.ValueOf(0),
-				}
+				field.Base = []string{base}
 			})
 			It("works", func() {
 				m.m = map[string]interface{}{base: map[string]interface{}{name: 1234}}
