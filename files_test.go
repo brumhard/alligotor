@@ -1,12 +1,11 @@
 package alligotor
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"os"
 	"path"
 	"reflect"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("files", func() {
@@ -56,6 +55,18 @@ test:
 				Name:  name,
 				value: reflect.ValueOf(0),
 			}
+		})
+		It("returns nil if not set", func() {
+			val, err := readFileMap(field, m, separator)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(val).To(BeNil())
+		})
+		It("returns empty string if set to empty string", func() {
+			m.m = map[string]interface{}{name: ""}
+
+			val, err := readFileMap(field, m, separator)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(val).To(Equal([]byte("")))
 		})
 		It("return []byte if type mismatch but value is string", func() {
 			m.m = map[string]interface{}{name: "1234"}

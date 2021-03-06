@@ -36,6 +36,14 @@ var _ = Describe("env", func() {
 				Name: name,
 			}
 		})
+		It("returns nil if not set", func() {
+			val := readEnv(field, "", nil, separator)
+			Expect(val).To(BeNil())
+		})
+		It("returns empty string if set to empty string", func() {
+			val := readEnv(field, "", map[string]string{strings.ToUpper(name): ""}, separator)
+			Expect(val).To(Equal([]byte("")))
+		})
 		It("uses uppercase name as default env name", func() {
 			val := readEnv(field, "", map[string]string{strings.ToUpper(name): "3000"}, separator)
 			Expect(val).To(Equal([]byte("3000")))
