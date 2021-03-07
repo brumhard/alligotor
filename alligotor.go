@@ -307,15 +307,6 @@ func (m stringMap) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (m stringMap) MarshalText() ([]byte, error) {
-	keyVals := make([]string, 0, len(m))
-	for k, v := range m {
-		keyVals = append(keyVals, strings.Join([]string{k, v}, "="))
-	}
-
-	return stringSlice(keyVals).MarshalText()
-}
-
 type stringSlice []string
 
 func (s *stringSlice) UnmarshalText(text []byte) error {
@@ -327,8 +318,4 @@ func (s *stringSlice) UnmarshalText(text []byte) error {
 	*s = tmpSlice
 
 	return nil
-}
-
-func (s stringSlice) MarshalText() ([]byte, error) {
-	return []byte(strings.Join(s, ",")), nil
 }
