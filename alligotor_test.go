@@ -203,8 +203,12 @@ var _ = Describe("config", func() {
 			})
 			It("returns error if v is not a pointer", func() {
 				err := (&Collector{}).Get(struct{}{})
-				Expect(err).Should(HaveOccurred())
-				Expect(err).To(Equal(ErrPointerExpected))
+				Expect(err).To(MatchError(ErrPointerExpected))
+			})
+			It("returns error if v is not a pointer to a struct", func() {
+				test := 5
+				err := (&Collector{}).Get(&test)
+				Expect(err).To(MatchError(ErrStructExpected))
 			})
 			It("works if v is a pointer", func() {
 				err := (&Collector{}).Get(&struct{}{})

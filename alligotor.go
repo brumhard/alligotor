@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrPointerExpected    = errors.New("expected a pointer as input")
+	ErrStructExpected     = errors.New("expected pointer to struct as input")
 	ErrTypeMismatch       = errors.New("type mismatch when trying to assign")
 	ErrDuplicateConfigKey = errors.New("key already used for a config source")
 )
@@ -87,7 +88,10 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	t := reflect.Indirect(value)
-	// TODO: check if t is a struct, otherwise return err
+
+	if t.Kind() != reflect.Struct {
+		return ErrStructExpected
+	}
 
 	// collect info about fields with tags, value...
 	fields, err := getFieldsConfigsFromValue(t)
