@@ -88,7 +88,6 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	t := reflect.Indirect(value)
-
 	if t.Kind() != reflect.Struct {
 		return ErrStructExpected
 	}
@@ -202,6 +201,7 @@ func set(target reflect.Value, value interface{}) error {
 		}
 
 		var err error
+
 		value, err = fromString(target, string(bytes))
 		if err != nil {
 			return err
