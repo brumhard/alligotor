@@ -12,7 +12,7 @@ import (
 
 var (
 	ErrPointerExpected    = errors.New("expected a pointer as input")
-	ErrUnsupportedType    = errors.New("invalid type")
+	ErrTypeMismatch       = errors.New("type mismatch when trying to assign")
 	ErrDuplicateConfigKey = errors.New("key already used for a config source")
 )
 
@@ -217,7 +217,8 @@ func fromString(target reflect.Value, value string) (interface{}, error) {
 		return specialVal, nil
 	}
 
-	if target.Type().Implements(textUnmarshaler) || target.Addr().Type().Implements(textUnmarshaler) {
+	if target.Type().Implements(textUnmarshaler) ||
+		(target.CanAddr() && target.Addr().Type().Implements(textUnmarshaler)) {
 		// use json capabilities to use TextUnmarshaler interface
 		value = strconv.Quote(value)
 	}
@@ -276,12 +277,14 @@ func specialTypes(target reflect.Value, value string) (finalVal interface{}, err
 	return nil, nil
 }
 
-func trySet(target, value reflect.Value) error {
-	target.Set(value)
+func trySet(target, value reflect.Value) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = ErrTypeMismatch
+		}
+	}()
 
-	if e := recover(); e != nil {
-		return ErrUnsupportedType
-	}
+	target.Set(value)
 
 	return nil
 }
