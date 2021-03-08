@@ -33,6 +33,7 @@ type FilesSource struct {
 
 // NewFilesSource returns a new FilesSource.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
+// If locations or baseName are empty this is a noop source.
 // It accepts a FileOption to override the default file separator.
 func NewFilesSource(locations []string, baseName string, opts ...FileOption) *FilesSource {
 	files := &FilesSource{
@@ -98,6 +99,10 @@ func (s *FilesSource) Read(f *Field) (interface{}, error) {
 }
 
 func findFiles(locations []string, baseName string) []string {
+	if baseName == "" {
+		return nil
+	}
+
 	var filePaths []string
 
 	for _, fileLocation := range locations {
