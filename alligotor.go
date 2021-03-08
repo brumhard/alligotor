@@ -44,7 +44,9 @@ func Get(v interface{}) error {
 // If the default configuration suffices your needs you can just use the package level Get function instead
 // without initializing a new Collector struct.
 //
-// The order in which the different configuration sources overwrite each other is the following:
+// The order in which the different configuration sources overwrite each other can be configured by
+// the order in which the sources are defined.
+// The default is the following:
 // defaults -> config files -> environment variables -> command line flags
 // (each source is overwritten by the following source)
 //
@@ -55,31 +57,26 @@ func Get(v interface{}) error {
 // Since environment variables and flags are purely text based it also supports types that implement
 // the encoding.TextUnmarshaler interface like for example zapcore.Level and logrus.Level.
 // On top of that custom implementations are already baked into the package to support
-// duration strings using time.ParseDuration() as well as string slices ([]string) in the format val1,val2,val3
-// and string maps (map[string]string) in the format key1=val1,key2=val2.
+// duration strings using time.ParseDuration() and time using time.Parse() as well as string slices ([]string)
+// in the format val1,val2,val3 and string maps (map[string]string) in the format key1=val1,key2=val2.
 type Collector struct {
 	Sources []ConfigSource
 }
 
+// TODO: proceed here
 // New returns a new Collector.
-// Various options can be used to customize the result.
-// If no options are present the resulting Collector won't have any configuration sources and return
+// It accepts multiple configuration sources that implement the ConfigSource interface.
+// If no sources are present the resulting Collector won't have any configuration sources and return
 // the input struct without any changes in the Collector.Get method.
-// Available options are:
-// - FromFiles to configure configuration files as input source
-// - FromEnvVars to configure environment variables as input source
-// - FromCLIFlags to configure command line flags as input source
-// Each of these options has an option itself to provide a custom separator.
-// They are named WithFileSeparator, WithEnvSeparator and WithFlagSeparator.
 func New(sources ...ConfigSource) *Collector {
 	return &Collector{Sources: sources}
 }
 
 // Get is the main package function and can be used by its wrapper Get or on a defined Collector struct.
 // It expects a pointer to the config struct to write the config variables from the configured source to.
-// If the input param is not a pointer, Get will return an error.
+// If the input param is not a pointer to a struct, Get will return an error.
 //
-// Get looks for config variables all sources that are not disabled.
+// Get looks for config variables in all defined sources.
 // Further usage details can be found in the examples or the Collector struct's documentation.
 func (c *Collector) Get(v interface{}) error {
 	value := reflect.ValueOf(v)

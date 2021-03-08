@@ -16,14 +16,15 @@ const (
 
 var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 
-// FlagsConfig is used to configure the configuration from command line flags.
+// FlagsSource is used to read the configuration from command line flags.
 // Separator is used for nested structs to construct flag names from parent and child properties recursively.
-// If Disabled is true the configuration from flags is skipped.
 type FlagsSource struct {
 	Separator        string
 	fieldToFlagInfos map[string][]*flagInfo
 }
 
+// NewFlagsSource returns a new FlagsSource.
+// It accepts a FlagOption to override the default flag separator.
 func NewFlagsSource(opts ...FlagOption) *FlagsSource {
 	flags := &FlagsSource{
 		Separator:        defaultFlagSeparator,
@@ -37,20 +38,24 @@ func NewFlagsSource(opts ...FlagOption) *FlagsSource {
 	return flags
 }
 
-// FlagOption takes a FlagsConfig as input and modifies it.
+// FlagOption takes a FlagsSource as input and modifies it.
 type FlagOption func(*FlagsSource)
 
-// WithFlagSeparator adds a custom separator to a FlagsConfig struct.
+// WithFlagSeparator adds a custom separator to a FlagsSource struct.
 func WithFlagSeparator(separator string) FlagOption {
 	return func(source *FlagsSource) {
 		source.Separator = separator
 	}
 }
 
+// Init initializes the fieldToFlagInfos property.
+// It should be used right before calling the Read method to load the latest flags.
 func (s *FlagsSource) Init(fields []*Field) error {
 	return s.initFlagMap(fields, os.Args[1:])
 }
 
+// Read reads the saved flagSet from the Init function and returns the set value for a certain field.
+// If not value is set in the flags it returns nil.
 func (s *FlagsSource) Read(field *Field) (interface{}, error) {
 	flagInfos, ok := s.fieldToFlagInfos[field.FullName(s.Separator)]
 	if !ok {

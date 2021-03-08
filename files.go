@@ -20,11 +20,10 @@ const (
 
 var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported or malformed content")
 
-// FilesConfig is used to configure the configuration from files.
+// FilesSource is used to read the configuration from files.
 // locations can be used to define where to look for files with the defined baseName.
 // Currently only json and yaml files are supported.
 // The separator is used for nested structs.
-// If Disabled is true the configuration from files is skipped.
 type FilesSource struct {
 	locations []string
 	baseName  string
@@ -32,9 +31,9 @@ type FilesSource struct {
 	fileMaps  []*ciMap
 }
 
-// NewFilesSource is a option for New to enable configuration files as configuration source.
+// NewFilesSource returns a new FilesSource.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
-// NewFilesSource itself takes more options to customize the used separator (WithFileSeparator).
+// It accepts a FileOption to override the default file separator.
 func NewFilesSource(locations []string, baseName string, opts ...FileOption) *FilesSource {
 	files := &FilesSource{
 		locations: locations,
@@ -49,16 +48,18 @@ func NewFilesSource(locations []string, baseName string, opts ...FileOption) *Fi
 	return files
 }
 
-// FileOption takes a FilesConfig as input and modifies it.
+// FileOption takes a FilesSource as input and modifies it.
 type FileOption func(*FilesSource)
 
-// WithFileSeparator adds a custom separator to a FilesConfig struct.
+// WithFileSeparator adds a custom separator to a FilesSource struct.
 func WithFileSeparator(separator string) FileOption {
 	return func(files *FilesSource) {
 		files.separator = separator
 	}
 }
 
+// Init initializes the fileMaps property.
+// It should be used right before calling the Read method to load the latest config files' states.
 func (s *FilesSource) Init(_ []*Field) error {
 	files := findFiles(s.locations, s.baseName)
 
@@ -79,6 +80,8 @@ func (s *FilesSource) Init(_ []*Field) error {
 	return nil
 }
 
+// Read reads the saved fileMaps from the Init function and returns the set value for a certain field.
+// If not value is set in the flags it returns nil.
 func (s *FilesSource) Read(f *Field) (interface{}, error) {
 	var finalVal interface{}
 
