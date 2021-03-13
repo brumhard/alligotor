@@ -167,7 +167,6 @@ test:
 				s = &FilesSource{
 					locations: []string{tmpDir},
 					baseName:  "test",
-					separator: defaultFileSeparator,
 				}
 			})
 			It("initializes fileMaps", func() {
@@ -186,7 +185,6 @@ test:
 						{m: map[string]interface{}{"test": "1234"}},
 						{m: map[string]interface{}{"test": "1235"}},
 					},
-					separator: defaultFileSeparator,
 				}
 
 				field = &Field{

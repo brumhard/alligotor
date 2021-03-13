@@ -33,11 +33,7 @@ func Example_customCollector() {
 
 	collector := alligotor.Collector{
 		Sources: []alligotor.ConfigSource{
-			alligotor.NewFilesSource(
-				[]string{"./", "/etc/example/,", "~/.example/"},
-				"example_config",
-				alligotor.WithFileSeparator("."),
-			),
+			alligotor.NewFilesSource([]string{"./", "/etc/example/,", "~/.example/"}, "example_config"),
 			alligotor.NewEnvSource("EXAMPLE", alligotor.WithEnvSeparator("::")),
 		},
 	}

@@ -13,10 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	fileKey              = "file"
-	defaultFileSeparator = "."
-)
+const fileKey = "file"
 
 var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported or malformed content")
 
@@ -27,35 +24,16 @@ var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type no
 type FilesSource struct {
 	locations []string
 	baseName  string
-	separator string
 	fileMaps  []*ciMap
 }
 
 // NewFilesSource returns a new FilesSource.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
 // If locations or baseName are empty this is a noop source.
-// It accepts a FileOption to override the default file separator.
-func NewFilesSource(locations []string, baseName string, opts ...FileOption) *FilesSource {
-	files := &FilesSource{
+func NewFilesSource(locations []string, baseName string) *FilesSource {
+	return &FilesSource{
 		locations: locations,
 		baseName:  baseName,
-		separator: defaultFileSeparator,
-	}
-
-	for _, opt := range opts {
-		opt(files)
-	}
-
-	return files
-}
-
-// FileOption takes a FilesSource as input and modifies it.
-type FileOption func(*FilesSource)
-
-// WithFileSeparator adds a custom separator to a FilesSource struct.
-func WithFileSeparator(separator string) FileOption {
-	return func(files *FilesSource) {
-		files.separator = separator
 	}
 }
 
