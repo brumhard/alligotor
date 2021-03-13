@@ -27,12 +27,12 @@ var _ = Describe("env", func() {
 	})
 	Describe("readEnv", func() {
 		var (
-			field     *Field
+			field     Field
 			separator = "_"
 			name      = "someInt"
 		)
 		BeforeEach(func() {
-			field = &Field{
+			field = Field{
 				Name: name,
 			}
 		})

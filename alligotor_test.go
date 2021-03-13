@@ -159,7 +159,7 @@ var _ = Describe("config", func() {
 			}{}
 			fields, err := getFieldsConfigsFromValue(reflect.ValueOf(target))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(fields).To(Equal([]*Field{
+			Expect(fields).To(Equal([]Field{
 				{
 					Base:    nil,
 					Name:    "Sub",

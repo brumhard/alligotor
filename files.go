@@ -39,7 +39,7 @@ func NewFilesSource(locations []string, baseNames []string) *FilesSource {
 
 // Init initializes the fileMaps property.
 // It should be used right before calling the Read method to load the latest config files' states.
-func (s *FilesSource) Init(_ []*Field) error {
+func (s *FilesSource) Init(fields []Field) error {
 	files := findFiles(s.locations, s.baseNames)
 
 	for _, filePath := range files {
@@ -61,11 +61,11 @@ func (s *FilesSource) Init(_ []*Field) error {
 
 // Read reads the saved fileMaps from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
-func (s *FilesSource) Read(f *Field) (interface{}, error) {
+func (s *FilesSource) Read(field Field) (interface{}, error) {
 	var finalVal interface{}
 
 	for _, m := range s.fileMaps {
-		val, err := readFileMap(f, m)
+		val, err := readFileMap(field, m)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFileMap(f *Field, m *ciMap) (interface{}, error) {
+func readFileMap(f Field, m *ciMap) (interface{}, error) {
 	if f.Configs[fileKey] != "" {
 		f.Name = f.Configs[fileKey]
 	}

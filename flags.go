@@ -20,7 +20,7 @@ var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 // Separator is used for nested structs to construct flag names from parent and child properties recursively.
 type FlagsSource struct {
 	Separator       string
-	fieldToFlagInfo map[*Field]*flagInfo
+	fieldToFlagInfo map[string]*flagInfo
 }
 
 // NewFlagsSource returns a new FlagsSource.
@@ -28,7 +28,7 @@ type FlagsSource struct {
 func NewFlagsSource(opts ...FlagOption) *FlagsSource {
 	flags := &FlagsSource{
 		Separator:       defaultFlagSeparator,
-		fieldToFlagInfo: make(map[*Field]*flagInfo),
+		fieldToFlagInfo: make(map[string]*flagInfo),
 	}
 
 	for _, opt := range opts {
@@ -50,14 +50,14 @@ func WithFlagSeparator(separator string) FlagOption {
 
 // Init initializes the fieldToFlagInfos property.
 // It should be used right before calling the Read method to load the latest flags.
-func (s *FlagsSource) Init(fields []*Field) error {
+func (s *FlagsSource) Init(fields []Field) error {
 	return s.initFlagMap(fields, os.Args[1:])
 }
 
 // Read reads the saved flagSet from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
-func (s *FlagsSource) Read(field *Field) (interface{}, error) {
-	flagInfo, ok := s.fieldToFlagInfo[field]
+func (s *FlagsSource) Read(field Field) (interface{}, error) {
+	flagInfo, ok := s.fieldToFlagInfo[field.FullName(s.Separator)]
 	if !ok {
 		return nil, nil
 	}
@@ -74,11 +74,13 @@ type flagInfo struct {
 	flag     *pflag.Flag
 }
 
-func (s *FlagsSource) initFlagMap(fields []*Field, args []string) error {
+func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
 	for _, f := range fields {
+		mapKey := f.FullName(s.Separator)
+
 		flagConfig, err := readFlagConfig(f.Configs[flagKey])
 		if err != nil {
 			return err
@@ -90,8 +92,8 @@ func (s *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 
 		longName := strings.ToLower(f.FullName(s.Separator))
 
-		s.fieldToFlagInfo[f] = &flagInfo{
-			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", ""),
+		s.fieldToFlagInfo[mapKey] = &flagInfo{
+			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.Description),
 			flag:     flagSet.Lookup(longName),
 		}
 	}

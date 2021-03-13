@@ -17,7 +17,10 @@ var (
 	ErrDuplicateConfigKey = errors.New("key already used for a config source")
 )
 
-const tag = "config"
+const (
+	configTagKey      = "config"
+	descriptionTagKey = "description"
+)
 
 // DefaultCollector is the default Collector and is used by Get.
 var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just like in http package
@@ -117,8 +120,8 @@ func (c *Collector) Get(v interface{}) error {
 	return nil
 }
 
-func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, error) {
-	var fields []*Field
+func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]Field, error) {
+	var fields []Field
 
 	for i := 0; i < value.NumField(); i++ {
 		fieldType := value.Type().Field(i)
@@ -128,16 +131,17 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]*Field, e
 			fieldValue = value.Field(i)
 		}
 
-		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(tag))
+		fieldConfig, err := readParameterConfig(fieldType.Tag.Get(configTagKey))
 		if err != nil {
 			return nil, err
 		}
 
-		fields = append(fields, &Field{
-			Base:    base,
-			Name:    fieldType.Name,
-			value:   fieldValue,
-			Configs: fieldConfig,
+		fields = append(fields, Field{
+			Base:        base,
+			Name:        fieldType.Name,
+			Description: fieldType.Tag.Get(descriptionTagKey),
+			value:       fieldValue,
+			Configs:     fieldConfig,
 		})
 
 		if fieldValue.Kind() == reflect.Struct {

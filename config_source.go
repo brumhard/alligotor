@@ -11,6 +11,8 @@ type Field struct {
 	Base []string
 	// Name is the name of the current property.
 	Name string
+	// Description contains the value contained in the description struct tag.
+	Description string
 	// value contains the reflect.Value of the field to set it's value.
 	value reflect.Value
 	// Configs contains structtag key -> value string and can be read to interpret the field's struct tags for
@@ -37,7 +39,7 @@ func (f *Field) Type() reflect.Type {
 // If anything else than a byte slice is returned the given value will be used as is and if there's a type mismatch
 // an error will be reported.
 type ConfigSource interface {
-	Read(field *Field) (interface{}, error)
+	Read(field Field) (interface{}, error)
 }
 
 // ConfigSourceInitializer is an optional interface to implement and can be used to initialize the config source
@@ -46,5 +48,5 @@ type ConfigSourceInitializer interface {
 	// Init should be called right before Read to initialize stuff.
 	// Some things shouldn't be initialized in the constructor since the environment or files (the config source)
 	// could be altered in the time between constructing a config source and calling the Read method.
-	Init(fields []*Field) error
+	Init(fields []Field) error
 }

@@ -46,12 +46,12 @@ test:
 	Describe("readFileMap", func() {
 		var (
 			m     *ciMap
-			field *Field
+			field Field
 			name  = "someInt"
 		)
 		BeforeEach(func() {
 			m = newCiMap()
-			field = &Field{
+			field = Field{
 				Name:  name,
 				value: reflect.ValueOf(0),
 			}
@@ -188,7 +188,7 @@ test:
 			})
 		})
 		Describe("Read", func() {
-			var field *Field
+			var field Field
 			BeforeEach(func() {
 				s = &FilesSource{
 					fileMaps: []*ciMap{
@@ -197,7 +197,7 @@ test:
 					},
 				}
 
-				field = &Field{
+				field = Field{
 					Name:  "test",
 					value: reflect.ValueOf(""),
 				}
