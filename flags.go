@@ -109,11 +109,11 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 			name = flagConfig.LongName
 		}
 
-		longName := strings.Join(append(f.Base(), name), s.Separator)
+		fullname := strings.ToLower(strings.Join(append(f.Base(), name), s.Separator))
 
 		s.fieldToFlagInfo[key(&fields[i])] = &flagInfo{
-			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.Description()),
-			flag:     flagSet.Lookup(longName),
+			valueStr: flagSet.StringP(fullname, flagConfig.ShortName, "", f.Description()),
+			flag:     flagSet.Lookup(fullname),
 		}
 	}
 
