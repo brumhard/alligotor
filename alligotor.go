@@ -66,7 +66,6 @@ type Collector struct {
 	Sources []ConfigSource
 }
 
-// TODO: proceed here
 // New returns a new Collector.
 // It accepts multiple configuration sources that implement the ConfigSource interface.
 // If no sources are present the resulting Collector won't have any configuration sources and return
