@@ -26,18 +26,18 @@ var _ = Describe("flags", func() {
 				for _, configStr := range []string{"a awd", "awd a"} {
 					f, err := readFlagConfig(configStr)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(f).To(Equal(flag{ShortName: "a", DefaultName: "awd"}))
+					Expect(f).To(Equal(flag{ShortName: "a", LongName: "awd"}))
 				}
 			})
 			It("should return valid flag when only short is set", func() {
 				f, err := readFlagConfig("a")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(f).To(Equal(flag{ShortName: "a", DefaultName: ""}))
+				Expect(f).To(Equal(flag{ShortName: "a", LongName: ""}))
 			})
 			It("should return valid flag when only long is set", func() {
 				f, err := readFlagConfig("awd")
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(f).To(Equal(flag{ShortName: "", DefaultName: "awd"}))
+				Expect(f).To(Equal(flag{ShortName: "", LongName: "awd"}))
 			})
 		})
 	})
@@ -52,30 +52,27 @@ var _ = Describe("flags", func() {
 		)
 		BeforeEach(func() {
 			s = &FlagsSource{
-				Separator:        separator,
-				fieldToFlagInfos: map[string][]*flagInfo{},
+				Separator:       separator,
+				fieldToFlagInfo: map[*Field]*flagInfo{},
 			}
 			field = &Field{Name: name}
 			fields = []*Field{field}
 		})
 		Describe("initFlagMap", func() {
-			It("contains flag for field and does not create empty flag if no default is set", func() {
+			It("contains flag for field", func() {
 				Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
 
-				flagInfos, ok := s.fieldToFlagInfos[field.FullName(separator)]
+				flagInfo, ok := s.fieldToFlagInfo[field]
 				Expect(ok).To(BeTrue())
-				Expect(flagInfos).To(HaveLen(1))
-				Expect(*flagInfos[0].valueStr).To(Equal("3000"))
+				Expect(*flagInfo.valueStr).To(Equal("3000"))
 			})
-			It("also contains default flag if set", func() {
+			It("supports overwriting longname", func() {
 				field.Configs = map[string]string{flagKey: "overwrite"}
 				Expect(s.initFlagMap(fields, []string{flagName, "3000", "--overwrite", "4000"})).To(Succeed())
 
-				flagInfos, ok := s.fieldToFlagInfos[field.FullName(separator)]
+				flagInfo, ok := s.fieldToFlagInfo[field]
 				Expect(ok).To(BeTrue())
-				Expect(flagInfos).To(HaveLen(2))
-				Expect(*flagInfos[0].valueStr).To(Equal("4000"))
-				Expect(*flagInfos[1].valueStr).To(Equal("3000"))
+				Expect(*flagInfo.valueStr).To(Equal("4000"))
 			})
 		})
 		Describe("Read", func() {
@@ -125,17 +122,20 @@ var _ = Describe("flags", func() {
 				})
 				It("can use defaults", func() {
 					field.Configs = map[string]string{flagKey: "overwrite"}
-					Expect(s.initFlagMap(fields, []string{"--overwrite", "3000"})).To(Succeed())
+					Expect(s.initFlagMap(fields, []string{"--" + base + separator + "overwrite", "3000"})).To(Succeed())
 					val, err := s.Read(field)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(val).To(Equal([]byte("3000")))
 				})
-				It("uses distinct name instead of overridden/default if both are set", func() {
+				It("uses overridden name even if normal one is set", func() {
 					field.Configs = map[string]string{flagKey: "overwrite"}
-					Expect(s.initFlagMap(fields, []string{"--overwrite", "1234", flagName, "1235"})).To(Succeed())
+					Expect(s.initFlagMap(fields, []string{
+						"--" + base + separator + "overwrite", "1234",
+						flagName, "1235"},
+					)).To(Succeed())
 					val, err := s.Read(field)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(val).To(Equal([]byte("1235")))
+					Expect(val).To(Equal([]byte("1234")))
 				})
 			})
 		})

@@ -19,16 +19,16 @@ var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 // FlagsSource is used to read the configuration from command line flags.
 // Separator is used for nested structs to construct flag names from parent and child properties recursively.
 type FlagsSource struct {
-	Separator        string
-	fieldToFlagInfos map[string][]*flagInfo
+	Separator       string
+	fieldToFlagInfo map[*Field]*flagInfo
 }
 
 // NewFlagsSource returns a new FlagsSource.
 // It accepts a FlagOption to override the default flag separator.
 func NewFlagsSource(opts ...FlagOption) *FlagsSource {
 	flags := &FlagsSource{
-		Separator:        defaultFlagSeparator,
-		fieldToFlagInfos: make(map[string][]*flagInfo),
+		Separator:       defaultFlagSeparator,
+		fieldToFlagInfo: make(map[*Field]*flagInfo),
 	}
 
 	for _, opt := range opts {
@@ -57,27 +57,16 @@ func (s *FlagsSource) Init(fields []*Field) error {
 // Read reads the saved flagSet from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
 func (s *FlagsSource) Read(field *Field) (interface{}, error) {
-	flagInfos, ok := s.fieldToFlagInfos[field.FullName(s.Separator)]
+	flagInfo, ok := s.fieldToFlagInfo[field]
 	if !ok {
 		return nil, nil
 	}
 
-	var finalVal []byte
-
-	for _, flagInfo := range flagInfos {
-		// differentiate a flag that is not set from a flag that is set to ""
-		if !flagInfo.flag.Changed {
-			continue
-		}
-
-		finalVal = []byte(*flagInfo.valueStr)
-	}
-
-	if finalVal == nil {
+	if !flagInfo.flag.Changed {
 		return nil, nil
 	}
 
-	return finalVal, nil
+	return []byte(*flagInfo.valueStr), nil
 }
 
 type flagInfo struct {
@@ -89,44 +78,30 @@ func (s *FlagsSource) initFlagMap(fields []*Field, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 
-	fieldCache := map[string]*flagInfo{}
-
 	for _, f := range fields {
 		flagConfig, err := readFlagConfig(f.Configs[flagKey])
 		if err != nil {
 			return err
 		}
 
-		var flagInfos []*flagInfo
-
-		defaultName := flagConfig.DefaultName
-		if defaultName != "" {
-			defaultFlag, ok := fieldCache[defaultName]
-			if !ok {
-				defaultFlag = &flagInfo{
-					valueStr: flagSet.StringP(defaultName, "", "", "default"),
-					flag:     flagSet.Lookup(defaultName),
-				}
-				fieldCache[defaultName] = defaultFlag
-			}
-
-			flagInfos = append(flagInfos, defaultFlag)
+		if flagConfig.LongName != "" {
+			f.Name = flagConfig.LongName
 		}
 
 		longName := strings.ToLower(f.FullName(s.Separator))
 
-		s.fieldToFlagInfos[f.FullName(s.Separator)] = append(flagInfos, &flagInfo{
-			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", "specific"),
+		s.fieldToFlagInfo[f] = &flagInfo{
+			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", ""),
 			flag:     flagSet.Lookup(longName),
-		})
+		}
 	}
 
 	return flagSet.Parse(args)
 }
 
 type flag struct {
-	DefaultName string
-	ShortName   string
+	LongName  string
+	ShortName string
 }
 
 func readFlagConfig(flagStr string) (flag, error) {
@@ -145,11 +120,11 @@ func readFlagConfig(flagStr string) (flag, error) {
 
 			flagConf.ShortName = f
 		} else {
-			if flagConf.DefaultName != "" {
+			if flagConf.LongName != "" {
 				return flag{}, ErrMalformedFlagConfig
 			}
 
-			flagConf.DefaultName = f
+			flagConf.LongName = f
 		}
 	}
 
