@@ -64,32 +64,21 @@ func (s *EnvSource) Read(field *Field) (interface{}, error) {
 }
 
 func readEnv(f *Field, prefix string, envMap map[string]string, separator string) []byte {
+	if f.Configs[envKey] != "" {
+		f.Name = f.Configs[envKey]
+	}
+
 	distinctEnvName := f.FullName(separator)
 	if prefix != "" {
 		distinctEnvName = prefix + separator + distinctEnvName
 	}
 
-	envNames := []string{
-		f.Configs[envKey],
-		distinctEnvName,
-	}
-
-	var finalVal []byte
-
-	for _, envName := range envNames {
-		envVal, ok := envMap[strings.ToUpper(envName)]
-		if !ok {
-			continue
-		}
-
-		finalVal = []byte(envVal)
-	}
-
-	if finalVal == nil {
+	envVal, ok := envMap[strings.ToUpper(distinctEnvName)]
+	if !ok {
 		return nil
 	}
 
-	return finalVal
+	return []byte(envVal)
 }
 
 func getEnvAsMap() map[string]string {
