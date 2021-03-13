@@ -66,7 +66,7 @@ var _ = Describe("flags", func() {
 			})
 			It("supports overwriting longname", func() {
 				fields[0].Configs = map[string]string{flagKey: "overwrite"}
-				Expect(s.initFlagMap(fields, []string{flagName, "3000", "--overwrite", "4000"})).To(Succeed())
+				Expect(s.initFlagMap(fields, []string{"--overwrite", "4000"})).To(Succeed())
 
 				flagInfo, ok := s.fieldToFlagInfo[fields[0].FullName(separator)]
 				Expect(ok).To(BeTrue())
@@ -124,16 +124,6 @@ var _ = Describe("flags", func() {
 					val, err := s.Read(fields[0])
 					Expect(err).ToNot(HaveOccurred())
 					Expect(val).To(Equal([]byte("3000")))
-				})
-				It("uses overridden name even if normal one is set", func() {
-					fields[0].Configs = map[string]string{flagKey: "overwrite"}
-					Expect(s.initFlagMap(fields, []string{
-						"--" + base + separator + "overwrite", "1234",
-						flagName, "1235"},
-					)).To(Succeed())
-					val, err := s.Read(fields[0])
-					Expect(err).ToNot(HaveOccurred())
-					Expect(val).To(Equal([]byte("1234")))
 				})
 			})
 		})

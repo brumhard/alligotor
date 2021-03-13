@@ -1,6 +1,7 @@
 package alligotor
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -14,7 +15,10 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
+var (
+	ErrMalformedFlagConfig = errors.New("malformed flag config strings")
+	ErrNotFound            = errors.New("not found")
+)
 
 // FlagsSource is used to read the configuration from command line flags.
 // Separator is used for nested structs to construct flag names from parent and child properties recursively.
@@ -76,7 +80,26 @@ type flagInfo struct {
 
 func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 	flagSet := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
+	flagSet.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: false}
+	flagSet.Usage = func() {
+		_, _ = fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+
+		flagSet.VisitAll(func(f *pflag.Flag) {
+			line := ""
+			if f.Shorthand != "" {
+				line = fmt.Sprintf("  -%s, --%s", f.Shorthand, f.Name)
+			} else {
+				line = fmt.Sprintf("      --%s", f.Name)
+			}
+
+			if f.Usage != "" {
+				line = line + ": " + f.Usage
+			}
+
+			_, _ = fmt.Fprint(os.Stderr, line)
+			_, _ = fmt.Fprintf(os.Stderr, "\n")
+		})
+	}
 
 	for _, f := range fields {
 		mapKey := f.FullName(s.Separator)
@@ -98,7 +121,13 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 		}
 	}
 
-	return flagSet.Parse(args)
+	if err := flagSet.Parse(args); err != nil {
+		if !errors.Is(err, pflag.ErrHelp) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type flag struct {
