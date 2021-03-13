@@ -135,6 +135,11 @@ func readFileMap(f Field, m *ciMap) (interface{}, error) {
 			return []byte(valueString), nil
 		}
 
+		// if it's a struct, maybe one of the properties can be assigned nevertheless
+		if f.Type().Kind() == reflect.Struct {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
