@@ -118,11 +118,11 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 }
 
 func readFileMap(f Field, m *ciMap) (interface{}, error) {
-	if f.Configs[fileKey] != "" {
-		f.Name = f.Configs[fileKey]
+	if f.configs[fileKey] != "" {
+		f.name = f.configs[fileKey]
 	}
 
-	valueForField, ok := m.Get(f.Base, f.Name)
+	valueForField, ok := m.Get(f.base, f.name)
 	if !ok {
 		return nil, nil
 	}

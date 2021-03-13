@@ -64,8 +64,8 @@ func (s *EnvSource) Read(field Field) (interface{}, error) {
 }
 
 func readEnv(f Field, prefix string, envMap map[string]string, separator string) []byte {
-	if f.Configs[envKey] != "" {
-		f.Name = f.Configs[envKey]
+	if f.configs[envKey] != "" {
+		f.name = f.configs[envKey]
 	}
 
 	distinctEnvName := f.FullName(separator)

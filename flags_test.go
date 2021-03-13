@@ -54,7 +54,7 @@ var _ = Describe("flags", func() {
 				Separator:       separator,
 				fieldToFlagInfo: map[string]*flagInfo{},
 			}
-			fields = []Field{{Name: name}}
+			fields = []Field{{name: name}}
 		})
 		Describe("initFlagMap", func() {
 			It("contains flag for field", func() {
@@ -65,7 +65,7 @@ var _ = Describe("flags", func() {
 				Expect(*flagInfo.valueStr).To(Equal("3000"))
 			})
 			It("supports overwriting longname", func() {
-				fields[0].Configs = map[string]string{flagKey: "overwrite"}
+				fields[0].configs = map[string]string{flagKey: "overwrite"}
 				Expect(s.initFlagMap(fields, []string{"--overwrite", "4000"})).To(Succeed())
 
 				flagInfo, ok := s.fieldToFlagInfo[fields[0].FullName(separator)]
@@ -93,14 +93,14 @@ var _ = Describe("flags", func() {
 				Expect(val).To(Equal([]byte("3000")))
 			})
 			It("uses configured long name", func() {
-				fields[0].Configs = map[string]string{flagKey: "overwrite"}
+				fields[0].configs = map[string]string{flagKey: "overwrite"}
 				Expect(s.initFlagMap(fields, []string{"--overwrite", "3000"})).To(Succeed())
 				val, err := s.Read(fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal([]byte("3000")))
 			})
 			It("uses configured short name", func() {
-				fields[0].Configs = map[string]string{flagKey: "o"}
+				fields[0].configs = map[string]string{flagKey: "o"}
 				Expect(s.initFlagMap(fields, []string{"-o", "3000"})).To(Succeed())
 				val, err := s.Read(fields[0])
 				Expect(err).ToNot(HaveOccurred())
@@ -109,7 +109,7 @@ var _ = Describe("flags", func() {
 			Context("nested", func() {
 				var base = "base"
 				BeforeEach(func() {
-					fields[0].Base = []string{base}
+					fields[0].base = []string{base}
 					flagName = "--" + base + separator + name
 				})
 				It("uses separator", func() {
@@ -119,7 +119,7 @@ var _ = Describe("flags", func() {
 					Expect(val).To(Equal([]byte("3000")))
 				})
 				It("can use defaults", func() {
-					fields[0].Configs = map[string]string{flagKey: "overwrite"}
+					fields[0].configs = map[string]string{flagKey: "overwrite"}
 					Expect(s.initFlagMap(fields, []string{"--" + base + separator + "overwrite", "3000"})).To(Succeed())
 					val, err := s.Read(fields[0])
 					Expect(err).ToNot(HaveOccurred())

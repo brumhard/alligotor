@@ -52,7 +52,7 @@ test:
 		BeforeEach(func() {
 			m = newCiMap()
 			field = Field{
-				Name:  name,
+				name:  name,
 				value: reflect.ValueOf(0),
 			}
 		})
@@ -82,7 +82,7 @@ test:
 			Expect(err).To(HaveOccurred())
 		})
 		It("uses configured overwrite long name", func() {
-			field.Configs = map[string]string{fileKey: "overwrite"}
+			field.configs = map[string]string{fileKey: "overwrite"}
 			m.m = map[string]interface{}{"overwrite": 3000}
 
 			val, err := readFileMap(field, m)
@@ -92,7 +92,7 @@ test:
 		Context("nested", func() {
 			var base = "base"
 			BeforeEach(func() {
-				field.Base = []string{base}
+				field.base = []string{base}
 			})
 			It("works", func() {
 				m.m = map[string]interface{}{base: map[string]interface{}{name: 1234}}
@@ -102,7 +102,7 @@ test:
 				Expect(val).To(Equal(1234))
 			})
 			It("name can be overridden, base remains", func() {
-				field.Configs = map[string]string{fileKey: "default"}
+				field.configs = map[string]string{fileKey: "default"}
 				m.m = map[string]interface{}{base: map[string]interface{}{"default": 1234}}
 
 				val, err := readFileMap(field, m)
@@ -110,7 +110,7 @@ test:
 				Expect(val).To(Equal(1234))
 			})
 			It("uses overridden name even if normal one is set", func() {
-				field.Configs = map[string]string{fileKey: "default"}
+				field.configs = map[string]string{fileKey: "default"}
 				m.m = map[string]interface{}{base: map[string]interface{}{name: 1235, "default": 1234}}
 
 				val, err := readFileMap(field, m)
@@ -198,7 +198,7 @@ test:
 				}
 
 				field = Field{
-					Name:  "test",
+					name:  "test",
 					value: reflect.ValueOf(""),
 				}
 			})

@@ -104,19 +104,19 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 	for _, f := range fields {
 		mapKey := f.FullName(s.Separator)
 
-		flagConfig, err := readFlagConfig(f.Configs[flagKey])
+		flagConfig, err := readFlagConfig(f.configs[flagKey])
 		if err != nil {
 			return err
 		}
 
 		if flagConfig.LongName != "" {
-			f.Name = flagConfig.LongName
+			f.name = flagConfig.LongName
 		}
 
 		longName := strings.ToLower(f.FullName(s.Separator))
 
 		s.fieldToFlagInfo[mapKey] = &flagInfo{
-			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.Description),
+			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.description),
 			flag:     flagSet.Lookup(longName),
 		}
 	}

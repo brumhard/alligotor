@@ -161,16 +161,16 @@ var _ = Describe("config", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(fields).To(Equal([]Field{
 				{
-					Base:    nil,
-					Name:    "Sub",
+					base:    nil,
+					name:    "Sub",
 					value:   reflect.ValueOf(target.Sub),
-					Configs: nil,
+					configs: nil,
 				},
 				{
-					Base:    []string{"Sub"},
-					Name:    "Port",
+					base:    []string{"Sub"},
+					name:    "Port",
 					value:   reflect.ValueOf(target.Sub.Port),
-					Configs: map[string]string{"env": "test"},
+					configs: map[string]string{"env": "test"},
 				},
 			}))
 		})

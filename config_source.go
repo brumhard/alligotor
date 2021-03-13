@@ -7,23 +7,49 @@ import (
 
 // Field is a struct to hold all information for a struct's field that should be filled with configuration.
 type Field struct {
-	// Base contains all the parents properties' names in order.
-	Base []string
-	// Name is the name of the current property.
-	Name string
-	// Description contains the value contained in the description struct tag.
-	Description string
+	// base contains all the parents properties' names in order.
+	base []string
+	// name is the name of the current property.
+	name string
+	// description contains the value contained in the description struct tag.
+	description string
 	// value contains the reflect.Value of the field to set it's value.
 	value reflect.Value
-	// Configs contains structtag key -> value string and can be read to interpret the field's struct tags for
+	// configs contains structtag key -> value string and can be read to interpret the field's struct tags for
 	// custom behavior like overrides.
-	Configs map[string]string
+	configs map[string]string
+}
+
+func NewField(base []string, name, description string, value reflect.Value, configs map[string]string) *Field {
+	return &Field{
+		base:        base,
+		name:        name,
+		description: description,
+		value:       value,
+		configs:     configs,
+	}
+}
+
+func (f *Field) Base() []string {
+	return f.base
+}
+
+func (f *Field) Name() string {
+	return f.name
+}
+
+func (f *Field) Description() string {
+	return f.description
+}
+
+func (f *Field) Configs() map[string]string {
+	return f.configs
 }
 
 // Fullname returns the field's name consisting of the base that is joined with the name separated by the defined
 // separator.
 func (f *Field) FullName(separator string) string {
-	return strings.Join(append(f.Base, f.Name), separator)
+	return strings.Join(append(f.base, f.name), separator)
 }
 
 // Type returns the type of the package. This can be used to switch on the type to parse for example a string

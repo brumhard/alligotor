@@ -136,11 +136,11 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]Field, er
 		}
 
 		fields = append(fields, Field{
-			Base:        base,
-			Name:        fieldType.Name,
-			Description: fieldType.Tag.Get(descriptionTagKey),
+			base:        base,
+			name:        fieldType.Name,
+			description: fieldType.Tag.Get(descriptionTagKey),
 			value:       fieldValue,
-			Configs:     fieldConfig,
+			configs:     fieldConfig,
 		})
 
 		if fieldValue.Kind() == reflect.Struct {
