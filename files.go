@@ -61,7 +61,7 @@ func (s *FilesSource) Init(fields []Field) error {
 
 // Read reads the saved fileMaps from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
-func (s *FilesSource) Read(field Field) (interface{}, error) {
+func (s *FilesSource) Read(field *Field) (interface{}, error) {
 	var finalVal interface{}
 
 	for _, m := range s.fileMaps {
@@ -117,12 +117,13 @@ func unmarshal(bytes []byte) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFileMap(f Field, m *ciMap) (interface{}, error) {
-	if f.configs[fileKey] != "" {
-		f.name = f.configs[fileKey]
+func readFileMap(f *Field, m *ciMap) (interface{}, error) {
+	name := f.Name()
+	if f.Configs()[fileKey] != "" {
+		name = f.Configs()[fileKey]
 	}
 
-	valueForField, ok := m.Get(f.base, f.name)
+	valueForField, ok := m.Get(f.Base(), name)
 	if !ok {
 		return nil, nil
 	}

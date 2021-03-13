@@ -60,7 +60,7 @@ var _ = Describe("flags", func() {
 			It("contains flag for field", func() {
 				Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
 
-				flagInfo, ok := s.fieldToFlagInfo[fields[0].FullName(separator)]
+				flagInfo, ok := s.fieldToFlagInfo[key(&fields[0])]
 				Expect(ok).To(BeTrue())
 				Expect(*flagInfo.valueStr).To(Equal("3000"))
 			})
@@ -68,7 +68,7 @@ var _ = Describe("flags", func() {
 				fields[0].configs = map[string]string{flagKey: "overwrite"}
 				Expect(s.initFlagMap(fields, []string{"--overwrite", "4000"})).To(Succeed())
 
-				flagInfo, ok := s.fieldToFlagInfo[fields[0].FullName(separator)]
+				flagInfo, ok := s.fieldToFlagInfo[key(&fields[0])]
 				Expect(ok).To(BeTrue())
 				Expect(*flagInfo.valueStr).To(Equal("4000"))
 			})
@@ -76,33 +76,33 @@ var _ = Describe("flags", func() {
 		Describe("Read", func() {
 			It("returns nil if not set", func() {
 				Expect(s.initFlagMap(fields, []string{})).To(Succeed())
-				val, err := s.Read(fields[0])
+				val, err := s.Read(&fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(BeNil())
 			})
 			It("returns empty string if set to empty string", func() {
 				Expect(s.initFlagMap(fields, []string{flagName, ""})).To(Succeed())
-				val, err := s.Read(fields[0])
+				val, err := s.Read(&fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal([]byte("")))
 			})
 			It("uses name as normal flag name", func() {
 				Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
-				val, err := s.Read(fields[0])
+				val, err := s.Read(&fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal([]byte("3000")))
 			})
 			It("uses configured long name", func() {
 				fields[0].configs = map[string]string{flagKey: "overwrite"}
 				Expect(s.initFlagMap(fields, []string{"--overwrite", "3000"})).To(Succeed())
-				val, err := s.Read(fields[0])
+				val, err := s.Read(&fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal([]byte("3000")))
 			})
 			It("uses configured short name", func() {
 				fields[0].configs = map[string]string{flagKey: "o"}
 				Expect(s.initFlagMap(fields, []string{"-o", "3000"})).To(Succeed())
-				val, err := s.Read(fields[0])
+				val, err := s.Read(&fields[0])
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal([]byte("3000")))
 			})
@@ -114,14 +114,14 @@ var _ = Describe("flags", func() {
 				})
 				It("uses separator", func() {
 					Expect(s.initFlagMap(fields, []string{flagName, "3000"})).To(Succeed())
-					val, err := s.Read(fields[0])
+					val, err := s.Read(&fields[0])
 					Expect(err).ToNot(HaveOccurred())
 					Expect(val).To(Equal([]byte("3000")))
 				})
 				It("can use defaults", func() {
 					fields[0].configs = map[string]string{flagKey: "overwrite"}
 					Expect(s.initFlagMap(fields, []string{"--" + base + separator + "overwrite", "3000"})).To(Succeed())
-					val, err := s.Read(fields[0])
+					val, err := s.Read(&fields[0])
 					Expect(err).ToNot(HaveOccurred())
 					Expect(val).To(Equal([]byte("3000")))
 				})

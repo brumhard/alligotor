@@ -104,13 +104,13 @@ func (c *Collector) Get(v interface{}) error {
 			}
 		}
 
-		for _, field := range fields {
-			fieldVal, err := source.Read(field)
+		for i, _ := range fields {
+			fieldVal, err := source.Read(&fields[i])
 			if err != nil {
 				return err
 			}
 
-			if err := set(field.value, fieldVal); err != nil {
+			if err := set(fields[i].value, fieldVal); err != nil {
 				return err
 			}
 		}
@@ -135,13 +135,12 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]Field, er
 			return nil, err
 		}
 
-		fields = append(fields, Field{
-			base:        base,
-			name:        fieldType.Name,
-			description: fieldType.Tag.Get(descriptionTagKey),
-			value:       fieldValue,
-			configs:     fieldConfig,
-		})
+		fields = append(fields, NewField(
+			base, fieldType.Name,
+			fieldType.Tag.Get(descriptionTagKey),
+			fieldValue,
+			fieldConfig,
+		))
 
 		if fieldValue.Kind() == reflect.Struct {
 			newBase := append(base, fieldType.Name)

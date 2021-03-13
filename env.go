@@ -52,23 +52,24 @@ func WithEnvSeparator(separator string) EnvOption {
 
 // Init initializes the envMap property.
 // It should be used right before calling the Read method to load the latest environment variables.
-func (s *EnvSource) Init(fields []Field) error {
+func (s *EnvSource) Init(_ []Field) error {
 	s.envMap = getEnvAsMap()
 	return nil
 }
 
 // Read reads the saved environment variables from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
-func (s *EnvSource) Read(field Field) (interface{}, error) {
+func (s *EnvSource) Read(field *Field) (interface{}, error) {
 	return readEnv(field, s.prefix, s.envMap, s.separator), nil
 }
 
-func readEnv(f Field, prefix string, envMap map[string]string, separator string) []byte {
-	if f.configs[envKey] != "" {
-		f.name = f.configs[envKey]
+func readEnv(f *Field, prefix string, envMap map[string]string, separator string) []byte {
+	name := f.Name()
+	if f.Configs()[envKey] != "" {
+		name = f.Configs()[envKey]
 	}
 
-	distinctEnvName := f.FullName(separator)
+	distinctEnvName := strings.Join(append(f.Base(), name), separator)
 	if prefix != "" {
 		distinctEnvName = prefix + separator + distinctEnvName
 	}

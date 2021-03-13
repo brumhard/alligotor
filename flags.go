@@ -15,10 +15,7 @@ const (
 	defaultFlagSeparator = "-"
 )
 
-var (
-	ErrMalformedFlagConfig = errors.New("malformed flag config strings")
-	ErrNotFound            = errors.New("not found")
-)
+var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
 
 // FlagsSource is used to read the configuration from command line flags.
 // Separator is used for nested structs to construct flag names from parent and child properties recursively.
@@ -60,8 +57,8 @@ func (s *FlagsSource) Init(fields []Field) error {
 
 // Read reads the saved flagSet from the Init function and returns the set value for a certain field.
 // If not value is set in the flags it returns nil.
-func (s *FlagsSource) Read(field Field) (interface{}, error) {
-	flagInfo, ok := s.fieldToFlagInfo[field.FullName(s.Separator)]
+func (s *FlagsSource) Read(field *Field) (interface{}, error) {
+	flagInfo, ok := s.fieldToFlagInfo[key(field)]
 	if !ok {
 		return nil, nil
 	}
@@ -101,22 +98,21 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 		})
 	}
 
-	for _, f := range fields {
-		mapKey := f.FullName(s.Separator)
-
-		flagConfig, err := readFlagConfig(f.configs[flagKey])
+	for i, f := range fields {
+		flagConfig, err := readFlagConfig(f.Configs()[flagKey])
 		if err != nil {
 			return err
 		}
 
+		name := f.Name()
 		if flagConfig.LongName != "" {
-			f.name = flagConfig.LongName
+			name = flagConfig.LongName
 		}
 
-		longName := strings.ToLower(f.FullName(s.Separator))
+		longName := strings.Join(append(f.Base(), name), s.Separator)
 
-		s.fieldToFlagInfo[mapKey] = &flagInfo{
-			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.description),
+		s.fieldToFlagInfo[key(&fields[i])] = &flagInfo{
+			valueStr: flagSet.StringP(longName, flagConfig.ShortName, "", f.Description()),
 			flag:     flagSet.Lookup(longName),
 		}
 	}
@@ -133,6 +129,10 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 type flag struct {
 	LongName  string
 	ShortName string
+}
+
+func key(field *Field) string {
+	return strings.Join(append(field.Base(), field.Name()), "-")
 }
 
 func readFlagConfig(flagStr string) (flag, error) {

@@ -2,7 +2,6 @@ package alligotor
 
 import (
 	"reflect"
-	"strings"
 )
 
 // Field is a struct to hold all information for a struct's field that should be filled with configuration.
@@ -20,8 +19,8 @@ type Field struct {
 	configs map[string]string
 }
 
-func NewField(base []string, name, description string, value reflect.Value, configs map[string]string) *Field {
-	return &Field{
+func NewField(base []string, name, description string, value reflect.Value, configs map[string]string) Field {
+	return Field{
 		base:        base,
 		name:        name,
 		description: description,
@@ -46,12 +45,6 @@ func (f *Field) Configs() map[string]string {
 	return f.configs
 }
 
-// Fullname returns the field's name consisting of the base that is joined with the name separated by the defined
-// separator.
-func (f *Field) FullName(separator string) string {
-	return strings.Join(append(f.base, f.name), separator)
-}
-
 // Type returns the type of the package. This can be used to switch on the type to parse for example a string
 // to the right target type.
 func (f *Field) Type() reflect.Type {
@@ -65,7 +58,7 @@ func (f *Field) Type() reflect.Type {
 // If anything else than a byte slice is returned the given value will be used as is and if there's a type mismatch
 // an error will be reported.
 type ConfigSource interface {
-	Read(field Field) (interface{}, error)
+	Read(field *Field) (interface{}, error)
 }
 
 // ConfigSourceInitializer is an optional interface to implement and can be used to initialize the config source
