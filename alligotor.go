@@ -104,7 +104,7 @@ func (c *Collector) Get(v interface{}) error {
 			}
 		}
 
-		for i, _ := range fields {
+		for i := range fields {
 			fieldVal, err := source.Read(&fields[i])
 			if err != nil {
 				return err

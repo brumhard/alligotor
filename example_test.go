@@ -60,7 +60,10 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(cfg.WillStayDefault, cfg.SomeList, cfg.SomeMap, cfg.SomeCustomType, *cfg.API.Enabled, cfg.DB.HostName, cfg.DB.Timeout, cfg.TimeStamp.UTC())
+	fmt.Println(
+		cfg.WillStayDefault, cfg.SomeList, cfg.SomeMap, cfg.SomeCustomType,
+		*cfg.API.Enabled, cfg.DB.HostName, cfg.DB.Timeout, cfg.TimeStamp.UTC(),
+	)
 
 	// Output:
 	// yessir [a b c] map[a:a b:b c:c] key=value true dbhost 1m0s 2007-01-02 15:04:05 +0000 UTC

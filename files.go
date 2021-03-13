@@ -30,7 +30,7 @@ type FilesSource struct {
 // NewFilesSource returns a new FilesSource.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
 // If locations or baseNames are empty this is a noop source.
-func NewFilesSource(locations []string, baseNames []string) *FilesSource {
+func NewFilesSource(locations, baseNames []string) *FilesSource {
 	return &FilesSource{
 		locations: locations,
 		baseNames: baseNames,
