@@ -122,7 +122,7 @@ test:
 	Describe("findFiles", func() {
 		Context("no location", func() {
 			It("returns nil", func() {
-				Expect(findFiles(nil, "")).To(BeNil())
+				Expect(findFiles(nil, nil)).To(BeNil())
 			})
 		})
 		Context("existing location", func() {
@@ -136,7 +136,7 @@ test:
 				Expect(os.RemoveAll(tmpDir)).To(Succeed())
 			})
 			It("returns nil with no file found", func() {
-				Expect(findFiles([]string{tmpDir}, "someFile")).To(BeNil())
+				Expect(findFiles([]string{tmpDir}, []string{"someFile"})).To(BeNil())
 			})
 			Context("existing file", func() {
 				var filePath string
@@ -145,7 +145,17 @@ test:
 					Expect(os.WriteFile(filePath, []byte("test"), os.ModePerm)).To(Succeed())
 				})
 				It("returns right filePath", func() {
-					Expect(findFiles([]string{tmpDir}, "test")).To(Equal([]string{filePath}))
+					Expect(findFiles([]string{tmpDir}, []string{"test"})).To(Equal([]string{filePath}))
+				})
+				Context("another existing file", func() {
+					var filePath2 string
+					BeforeEach(func() {
+						filePath2 = path.Join(tmpDir, "test_secret.yml")
+						Expect(os.WriteFile(filePath2, []byte("test2"), os.ModePerm)).To(Succeed())
+					})
+					It("returns right filePaths", func() {
+						Expect(findFiles([]string{tmpDir}, []string{"test", "test_secret"})).To(Equal([]string{filePath, filePath2}))
+					})
 				})
 			})
 		})
@@ -166,7 +176,7 @@ test:
 
 				s = &FilesSource{
 					locations: []string{tmpDir},
-					baseName:  "test",
+					baseNames: []string{"test"},
 				}
 			})
 			It("initializes fileMaps", func() {

@@ -51,7 +51,7 @@ func Example_structTags() {
 	_ = os.WriteFile(filePath, jsonBytes, os.ModePerm)
 
 	collector := alligotor.New(
-		alligotor.NewFilesSource([]string{dir}, "example_config"),
+		alligotor.NewFilesSource([]string{dir}, []string{"example_config"}),
 	)
 
 	var cfg StructTagConfig

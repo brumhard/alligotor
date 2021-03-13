@@ -23,24 +23,24 @@ var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type no
 // The separator is used for nested structs.
 type FilesSource struct {
 	locations []string
-	baseName  string
+	baseNames []string
 	fileMaps  []*ciMap
 }
 
 // NewFilesSource returns a new FilesSource.
 // It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
-// If locations or baseName are empty this is a noop source.
-func NewFilesSource(locations []string, baseName string) *FilesSource {
+// If locations or baseNames are empty this is a noop source.
+func NewFilesSource(locations []string, baseNames []string) *FilesSource {
 	return &FilesSource{
 		locations: locations,
-		baseName:  baseName,
+		baseNames: baseNames,
 	}
 }
 
 // Init initializes the fileMaps property.
 // It should be used right before calling the Read method to load the latest config files' states.
 func (s *FilesSource) Init(_ []*Field) error {
-	files := findFiles(s.locations, s.baseName)
+	files := findFiles(s.locations, s.baseNames)
 
 	for _, filePath := range files {
 		fileBytes, err := os.ReadFile(path.Join(filePath))
@@ -76,8 +76,8 @@ func (s *FilesSource) Read(f *Field) (interface{}, error) {
 	return finalVal, nil
 }
 
-func findFiles(locations []string, baseName string) []string {
-	if baseName == "" {
+func findFiles(locations, baseNames []string) []string {
+	if len(baseNames) == 0 {
 		return nil
 	}
 
@@ -90,12 +90,14 @@ func findFiles(locations []string, baseName string) []string {
 		}
 
 		for _, fileInfo := range fileInfos {
-			name := fileInfo.Name()
-			if strings.TrimSuffix(name, path.Ext(name)) != baseName {
-				continue
-			}
+			for _, baseName := range baseNames {
+				name := fileInfo.Name()
+				if strings.TrimSuffix(name, path.Ext(name)) != baseName {
+					continue
+				}
 
-			filePaths = append(filePaths, path.Join(fileLocation, name))
+				filePaths = append(filePaths, path.Join(fileLocation, name))
+			}
 		}
 	}
 

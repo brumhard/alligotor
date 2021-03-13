@@ -192,7 +192,7 @@ var _ = Describe("config", func() {
 				fileBaseName = "config"
 
 				c = New(
-					NewFilesSource([]string{tempDir}, fileBaseName),
+					NewFilesSource([]string{tempDir}, []string{fileBaseName}),
 					NewEnvSource(""),
 					NewFlagsSource(),
 				)
