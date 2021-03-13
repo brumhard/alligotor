@@ -70,7 +70,7 @@ func (s *FilesSource) Init(_ []*Field) error {
 			continue
 		}
 
-		m, err := unmarshal(fileBytes, s.separator)
+		m, err := unmarshal(fileBytes)
 		if err != nil {
 			continue
 		}
@@ -87,7 +87,7 @@ func (s *FilesSource) Read(f *Field) (interface{}, error) {
 	var finalVal interface{}
 
 	for _, m := range s.fileMaps {
-		val, err := readFileMap(f, m, s.separator)
+		val, err := readFileMap(f, m)
 		if err != nil {
 			return nil, err
 		}
@@ -124,8 +124,8 @@ func findFiles(locations []string, baseName string) []string {
 	return filePaths
 }
 
-func unmarshal(bytes []byte, fileSeparator string) (*ciMap, error) {
-	m := newCiMap(withSeparator(fileSeparator))
+func unmarshal(bytes []byte) (*ciMap, error) {
+	m := newCiMap()
 	if err := yaml.Unmarshal(bytes, m); err == nil {
 		return m, nil
 	}
@@ -137,32 +137,22 @@ func unmarshal(bytes []byte, fileSeparator string) (*ciMap, error) {
 	return nil, ErrFileTypeNotSupported
 }
 
-func readFileMap(f *Field, m *ciMap, separator string) (interface{}, error) {
-	fieldNames := []string{
-		f.Configs[fileKey],
-		f.FullName(separator),
+func readFileMap(f *Field, m *ciMap) (interface{}, error) {
+	fieldName := f.Name
+	if f.Configs[fileKey] != "" {
+		fieldName = f.Configs[fileKey]
 	}
 
-	var finalVal interface{}
-
-	for _, fieldName := range fieldNames {
-		valueForField, ok := m.Get(fieldName)
-		if !ok {
-			continue
-		}
-
-		finalVal = valueForField
-	}
-
-	if finalVal == nil {
+	valueForField, ok := m.Get(f.Base, fieldName)
+	if !ok {
 		return nil, nil
 	}
 
 	fieldTypeNew := reflect.New(f.Type())
 
-	if err := mapstructure.Decode(finalVal, fieldTypeNew.Interface()); err != nil {
+	if err := mapstructure.Decode(valueForField, fieldTypeNew.Interface()); err != nil {
 		// if theres a type mismatch check if value is a string so maybe it can be parsed
-		if valueString, ok := finalVal.(string); ok {
+		if valueString, ok := valueForField.(string); ok {
 			return []byte(valueString), nil
 		}
 

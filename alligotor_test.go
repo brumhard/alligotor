@@ -219,12 +219,12 @@ var _ = Describe("config", func() {
 					API: &test.APIConfig{Port: 1, LogLevel: "info"},
 					DB:  &test.DBConfig{LogLevel: "info"},
 				}
-				jsonBytes := []byte(`{"logLevel": "default", "api": {"port": 2, "logLevel": "specified"}}`)
+				jsonBytes := []byte(`{"api": {"port": 2, "logLevel": "specified"}}`)
 				Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
 
 				Expect(c.Get(&testingStruct)).To(Succeed())
+				Expect(testingStruct.DB.LogLevel).To(Equal("info"))
 				Expect(testingStruct.API.Port).To(Equal(2))
-				Expect(testingStruct.DB.LogLevel).To(Equal("default"))
 				Expect(testingStruct.API.LogLevel).To(Equal("specified"))
 			})
 			It("supports embedded structs for properties", func() {
@@ -232,12 +232,12 @@ var _ = Describe("config", func() {
 					APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
 					DBConfig:  test.DBConfig{LogLevel: "info"},
 				}
-				jsonBytes := []byte(`{"logLevel": "default", "apiConfig": {"port": 2, "logLevel": "specified"}}`)
+				jsonBytes := []byte(`{"apiConfig": {"port": 2, "logLevel": "specified"}}`)
 				Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
 
 				Expect(c.Get(&testingStruct)).To(Succeed())
+				Expect(testingStruct.DBConfig.LogLevel).To(Equal("info"))
 				Expect(testingStruct.APIConfig.Port).To(Equal(2))
-				Expect(testingStruct.DBConfig.LogLevel).To(Equal("default"))
 				Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
 			})
 			Context("Integration Tests", func() {
@@ -259,8 +259,8 @@ var _ = Describe("config", func() {
 				})
 				Describe("overwrites: default, file, env, flag", func() {
 					testingStruct := testingConfig{
-						Enabled: false,
-						Sleep:   time.Minute,
+						Enabled: true,
+						Sleep:   time.Second,
 						API:     test.APIConfig{Port: 1, LogLevel: "info"},
 						DB:      test.DBConfig{LogLevel: "info"},
 					}
@@ -272,40 +272,46 @@ var _ = Describe("config", func() {
 					})
 					Context("file is set", func() {
 						BeforeEach(func() {
-							jsonBytes := []byte(`{"logLevel": "default", "sleep": "1s", "api": {"port": 2, "logLevel": "specifiedInFile"}}`)
+							jsonBytes := []byte(`{"sleep": "2s","api": {"port": 2, "logLevel": "file"}, "db": {"logLevel": "file"}}`)
 							Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
 						})
 						It("overrides defaults", func() {
 							Expect(c.Get(&testingStruct)).To(Succeed())
-							Expect(testingStruct.Sleep).To(Equal(1 * time.Second))
+							Expect(testingStruct.Sleep).To(Equal(2 * time.Second))
 							Expect(testingStruct.API.Port).To(Equal(2))
-							Expect(testingStruct.DB.LogLevel).To(Equal("default"))
-							Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+							Expect(testingStruct.API.LogLevel).To(Equal("file"))
+							Expect(testingStruct.DB.LogLevel).To(Equal("file"))
 						})
 						Context("env is set", func() {
 							BeforeEach(func() {
-								Expect(os.Setenv("PORT", "3")).To(Succeed())
-								Expect(os.Setenv("DB_LOGLEVEL", "logLevelFromEnv")).To(Succeed())
-								Expect(os.Setenv("SLEEP", "2m")).To(Succeed())
+								Expect(os.Setenv("SLEEP", "3s")).To(Succeed())
+								Expect(os.Setenv("API_PORT", "3")).To(Succeed())
+								Expect(os.Setenv("API_LOGLEVEL", "env")).To(Succeed())
+								Expect(os.Setenv("DB_LOGLEVEL", "env")).To(Succeed())
 							})
 							It("overrides file", func() {
 								Expect(c.Get(&testingStruct)).To(Succeed())
-								Expect(testingStruct.Sleep).To(Equal(2 * time.Minute))
+								Expect(testingStruct.Sleep).To(Equal(3 * time.Second))
 								Expect(testingStruct.API.Port).To(Equal(3))
-								Expect(testingStruct.DB.LogLevel).To(Equal("logLevelFromEnv"))
-								Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+								Expect(testingStruct.API.LogLevel).To(Equal("env"))
+								Expect(testingStruct.DB.LogLevel).To(Equal("env"))
 							})
 							Context("flags are set", func() {
 								BeforeEach(func() {
-									os.Args = []string{"commandName", "-p", "4", "--enabled", "true", "--sleep", "3h"}
+									os.Args = []string{"commandName",
+										"--sleep", "4s",
+										"--api-port", "4",
+										"--api-loglevel", "flag",
+										"--db-loglevel", "flag",
+									}
 								})
-								It("overrides env", func() {
+								It("overrides env but keeps defaults that are never overridden", func() {
 									Expect(c.Get(&testingStruct)).To(Succeed())
 									Expect(testingStruct.Enabled).To(Equal(true))
-									Expect(testingStruct.Sleep).To(Equal(3 * time.Hour))
+									Expect(testingStruct.Sleep).To(Equal(4 * time.Second))
 									Expect(testingStruct.API.Port).To(Equal(4))
-									Expect(testingStruct.DB.LogLevel).To(Equal("logLevelFromEnv"))
-									Expect(testingStruct.API.LogLevel).To(Equal("specifiedInFile"))
+									Expect(testingStruct.API.LogLevel).To(Equal("flag"))
+									Expect(testingStruct.DB.LogLevel).To(Equal("flag"))
 								})
 							})
 						})

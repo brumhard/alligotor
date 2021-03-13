@@ -7,51 +7,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultSeparator = "."
-
 type ciMap struct {
-	m         map[string]interface{}
-	separator string
+	m map[string]interface{}
 }
 
-type mapOption func(*ciMap)
-
-func withSeparator(separator string) mapOption {
-	return func(c *ciMap) {
-		c.separator = separator
-	}
+func newCiMap() *ciMap {
+	return &ciMap{m: make(map[string]interface{})}
 }
 
-func newCiMap(options ...mapOption) *ciMap {
-	newMap := &ciMap{m: make(map[string]interface{})}
-
-	for _, opt := range options {
-		opt(newMap)
-	}
-
-	if newMap.separator == "" {
-		newMap.separator = defaultSeparator
-	}
-
-	return newMap
+func (c ciMap) Get(base []string, name string) (b interface{}, ok bool) {
+	return c.get(append(base, name))
 }
 
-func (c ciMap) Set(s string, b bool) {
-	c.m[strings.ToLower(s)] = b
-}
-
-func (c ciMap) Get(s string) (b interface{}, ok bool) {
-	substr := strings.Split(s, c.separator)
-
+func (c ciMap) get(toIterate []string) (b interface{}, ok bool) {
 	// go through map keys and check if key.ToLower() matches, field.ToLower()
 	for key := range c.m {
-		if !strings.EqualFold(key, substr[0]) {
+		if !strings.EqualFold(key, toIterate[0]) {
 			continue
 		}
 
 		val := c.m[key]
 
-		if len(substr) == 1 {
+		if len(toIterate) == 1 {
 			// no separator in the string -> reached end of search string
 			return val, true
 		}
@@ -62,9 +39,7 @@ func (c ciMap) Get(s string) (b interface{}, ok bool) {
 			return nil, false
 		}
 
-		nestedCiMap := ciMap{m: valAsMap, separator: c.separator}
-
-		return nestedCiMap.Get(strings.Join(substr[1:], c.separator))
+		return ciMap{m: valAsMap}.get(toIterate[1:])
 	}
 
 	return nil, false

@@ -11,10 +11,10 @@ import (
 type StructTagConfig struct {
 	API struct {
 		Port     int
-		LogLevel string `config:"file=default.log"`
+		LogLevel string `config:"file=log"`
 	}
 	DB struct {
-		LogLevel string `config:"file=default.log"`
+		LogLevel string `config:"file=log"`
 	}
 }
 
@@ -38,21 +38,20 @@ func Example_structTags() {
 	defer os.RemoveAll(dir)
 
 	jsonBytes := []byte(`{
-    "default": {
-        "log": "error"
-    },
     "api": {
         "port": 1234,
-        "logLevel": "debug"
-    }
+        "log": "debug"
+    },
+	"db": {
+		"log": "info"
+	}
 }`)
 
 	filePath := path.Join(dir, "example_config.json")
-	_ = os.WriteFile(filePath, jsonBytes, 0600)
+	_ = os.WriteFile(filePath, jsonBytes, os.ModePerm)
 
 	collector := alligotor.New(
-		alligotor.NewFilesSource([]string{dir}, "example_config", alligotor.WithFileSeparator(".")),
-		alligotor.NewEnvSource("PREFIX", alligotor.WithEnvSeparator("_")),
+		alligotor.NewFilesSource([]string{dir}, "example_config"),
 	)
 
 	var cfg StructTagConfig
@@ -61,5 +60,5 @@ func Example_structTags() {
 	fmt.Println(cfg)
 
 	// Output:
-	// {{1234 debug} {error}}
+	// {{1234 debug} {info}}
 }

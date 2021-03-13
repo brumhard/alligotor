@@ -25,28 +25,28 @@ var _ = Describe("ciMap", func() {
 	Describe("Get", func() {
 		Context("nested", func() {
 			It("works", func() {
-				val, ok := ciMap.Get("test" + defaultSeparator + "innertest")
+				val, ok := ciMap.Get([]string{"test"}, "innertest")
 				Expect(ok).To(BeTrue())
 				Expect(val).To(Equal("arrrr"))
 			})
 		})
 		Context("case insensitive", func() {
 			It("works", func() {
-				val, ok := ciMap.Get("test" + defaultSeparator + "INNERTEST2")
+				val, ok := ciMap.Get([]string{"test"}, "INNERTEST2")
 				Expect(ok).To(BeTrue())
 				Expect(val).To(Equal("pirate"))
 			})
 		})
 		Context("in root", func() {
 			It("works", func() {
-				val, ok := ciMap.Get("TEST2")
+				val, ok := ciMap.Get(nil, "TEST2")
 				Expect(ok).To(BeTrue())
 				Expect(val).To(Equal("idk"))
 			})
 		})
 		Context("key does not exist", func() {
 			It("should return ok=false", func() {
-				_, ok := ciMap.Get("not-existing")
+				_, ok := ciMap.Get(nil, "not-existing")
 				Expect(ok).To(BeFalse())
 			})
 		})
