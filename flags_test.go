@@ -51,7 +51,7 @@ var _ = Describe("flags", func() {
 		)
 		BeforeEach(func() {
 			s = &FlagsSource{
-				Separator:       separator,
+				separator:       separator,
 				fieldToFlagInfo: map[string]*flagInfo{},
 			}
 			fields = []Field{{name: name}}

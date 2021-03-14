@@ -23,7 +23,8 @@ type Config struct {
 		HostName string        `config:"flag=h host"` // overwrite the cli flags to read, h is shortname
 		Timeout  time.Duration `config:"flag=time"`   // only overwrite long name
 	}
-	TimeStamp time.Time `config:"file=custom"` // implements text.Unmarshaler, overwrite key in file
+	TimeStamp  time.Time `config:"file=custom"`                       // implements text.Unmarshaler, overwrite key in file
+	Everything string    `config:"env=every,flag=e every,file=every"` // set overwrites for every source
 }
 
 func Example() {
@@ -37,7 +38,7 @@ func Example() {
 	}
 }`)
 
-	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true", "-h", "dbhost"}
+	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true", "-h", "dbhost", "--every", "every"}
 	_ = os.Setenv("TEST_MAP", "a=a,b=b,c=c")
 	_ = os.Setenv("TEST_DB_TIMEOUT", "1m0s")
 	_ = os.Setenv("TEST_CUSTOM", "key=value")
@@ -63,10 +64,11 @@ func Example() {
 	fmt.Println(
 		cfg.WillStayDefault, cfg.SomeList, cfg.SomeMap, cfg.SomeCustomType,
 		*cfg.API.Enabled, cfg.DB.HostName, cfg.DB.Timeout, cfg.TimeStamp.UTC(),
+		cfg.Everything,
 	)
 
 	// Output:
-	// yessir [a b c] map[a:a b:b c:c] key=value true dbhost 1m0s 2007-01-02 15:04:05 +0000 UTC
+	// yessir [a b c] map[a:a b:b c:c] key=value true dbhost 1m0s 2007-01-02 15:04:05 +0000 UTC every
 }
 
 type SomeCustomType struct {

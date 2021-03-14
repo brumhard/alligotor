@@ -26,7 +26,7 @@ type EnvSource struct {
 // prefix defines the prefix to be prepended to the automatically generated names when looking for
 // the environment variables.
 // prefix can be empty.
-// It accepts a EnvOption to override the default env separator.
+// It accepts an EnvOption to override the default env separator.
 func NewEnvSource(prefix string, opts ...EnvOption) *EnvSource {
 	env := &EnvSource{
 		prefix:    prefix,

@@ -18,9 +18,10 @@ const fileKey = "file"
 var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported or malformed content")
 
 // FilesSource is used to read the configuration from files.
-// locations can be used to define where to look for files with the defined baseName.
+// locations can be used to define where to look for files with the defined baseNames.
+// The baseNames define the names of the files to look for without the file extension
+// (as multiple file types are supported).
 // Currently only json and yaml files are supported.
-// The separator is used for nested structs.
 type FilesSource struct {
 	locations []string
 	baseNames []string
@@ -28,7 +29,7 @@ type FilesSource struct {
 }
 
 // NewFilesSource returns a new FilesSource.
-// It takes the locations/ dirs where to look for files and the basename (without file extension) as input parameters.
+// It takes the locations/ dirs where to look for files and the baseNames (without file extension) as input parameters.
 // If locations or baseNames are empty this is a noop source.
 func NewFilesSource(locations, baseNames []string) *FilesSource {
 	return &FilesSource{

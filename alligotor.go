@@ -32,11 +32,10 @@ var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just lik
 }
 
 // Get is a wrapper around DefaultCollector.Get.
-// All configuration sources are enabled.
+// All predefined configuration sources are enabled.
 // For environment variables it uses no prefix and "_" as the separator.
 // For flags it use "-" as the separator.
 // For config files it uses "config" as the basename and searches in the current directory.
-// It uses "." as the separator.
 func Get(v interface{}) error {
 	return DefaultCollector.Get(v)
 }
