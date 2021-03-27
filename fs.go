@@ -3,7 +3,6 @@ package alligotor
 import (
 	"io"
 	"io/fs"
-	"os"
 )
 
 type FSSource struct {
@@ -17,14 +16,6 @@ func NewFSSource(fsys fs.FS, globs ...string) *FSSource {
 		fsys:  fsys,
 		globs: globs,
 	}
-}
-
-func NewOSFSSource(globs ...string) *FSSource {
-	// TODO: does this support relative paths like ../../test.*?
-	// TODO: this does not allow absolute paths as well, needs to be fixed
-	// 			- https://github.com/golang/go/issues/44286
-	// 			- https://github.com/golang/go/issues/44279
-	return NewFSSource(os.DirFS(""), globs...)
 }
 
 // Init initializes the fileMaps property.
@@ -41,7 +32,7 @@ func (s *FSSource) Init(fields []Field) error {
 }
 
 func loadFSFiles(fsys fs.FS, globs []string) ([]io.Reader, error) {
-	var filesBytes []io.Reader
+	var files []io.Reader
 
 	for _, glob := range globs {
 		matches, err := fs.Glob(fsys, glob)
@@ -55,9 +46,9 @@ func loadFSFiles(fsys fs.FS, globs []string) ([]io.Reader, error) {
 				return nil, err
 			}
 
-			filesBytes = append(filesBytes, file)
+			files = append(files, file)
 		}
 	}
 
-	return filesBytes, nil
+	return files, nil
 }

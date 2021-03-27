@@ -1,7 +1,11 @@
 package alligotor
 
 import (
+	"encoding/json"
+	"github.com/mitchellh/mapstructure"
+	"gopkg.in/yaml.v3"
 	"io"
+	"reflect"
 )
 
 type ReadersSource struct {
@@ -62,4 +66,47 @@ func (s *ReadersSource) Read(field *Field) (interface{}, error) {
 	}
 
 	return finalVal, nil
+}
+
+func unmarshal(bytes []byte) (*ciMap, error) {
+	m := newCiMap()
+	if err := yaml.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	if err := json.Unmarshal(bytes, m); err == nil {
+		return m, nil
+	}
+
+	return nil, ErrFileTypeNotSupported
+}
+
+func readFileMap(f *Field, m *ciMap) (interface{}, error) {
+	name := f.Name()
+	if f.Configs()[fileKey] != "" {
+		name = f.Configs()[fileKey]
+	}
+
+	valueForField, ok := m.Get(f.Base(), name)
+	if !ok {
+		return nil, nil
+	}
+
+	fieldTypeNew := reflect.New(f.Type())
+
+	if err := mapstructure.Decode(valueForField, fieldTypeNew.Interface()); err != nil {
+		// if theres a type mismatch check if value is a string so maybe it can be parsed
+		if valueString, ok := valueForField.(string); ok {
+			return []byte(valueString), nil
+		}
+
+		// if it's a struct, maybe one of the properties can be assigned nevertheless
+		if f.Type().Kind() == reflect.Struct {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return fieldTypeNew.Elem().Interface(), nil
 }
