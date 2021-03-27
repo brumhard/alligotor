@@ -19,19 +19,29 @@ func NewReadersSource(readers ...io.Reader) *ReadersSource {
 // It should be used right before calling the Read method to load the latest config files' states.
 func (s *ReadersSource) Init(_ []Field) error {
 	for _, reader := range s.readers {
-		var fileBytes []byte
+		if err := func() error {
+			var fileBytes []byte
 
-		_, err := reader.Read(fileBytes)
-		if err != nil {
+			if closer, ok := reader.(io.Closer); ok {
+				defer closer.Close()
+			}
+
+			_, err := reader.Read(fileBytes)
+			if err != nil {
+				return err
+			}
+
+			m, err := unmarshal(fileBytes)
+			if err != nil {
+				return nil
+			}
+
+			s.fileMaps = append(s.fileMaps, m)
+
+			return nil
+		}(); err != nil {
 			return err
 		}
-
-		m, err := unmarshal(fileBytes)
-		if err != nil {
-			continue
-		}
-
-		s.fileMaps = append(s.fileMaps, m)
 	}
 
 	return nil
