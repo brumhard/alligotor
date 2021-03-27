@@ -1,7 +1,6 @@
 package alligotor
 
 import (
-	"bytes"
 	"io"
 	"io/fs"
 	"os"
@@ -51,12 +50,12 @@ func loadFSFiles(fsys fs.FS, globs []string) ([]io.Reader, error) {
 		}
 
 		for _, match := range matches {
-			fileBytes, err := fs.ReadFile(fsys, match)
+			file, err := fsys.Open(match)
 			if err != nil {
 				return nil, err
 			}
 
-			filesBytes = append(filesBytes, bytes.NewReader(fileBytes))
+			filesBytes = append(filesBytes, file)
 		}
 	}
 
