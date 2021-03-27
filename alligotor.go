@@ -25,7 +25,7 @@ const (
 // DefaultCollector is the default Collector and is used by Get.
 var DefaultCollector = &Collector{ // nolint: gochecknoglobals // usage just like in http package
 	Sources: []ConfigSource{
-		NewFilesSource([]string{"."}, []string{"config"}),
+		NewFilesSource("./config.*"),
 		NewEnvSource(""),
 		NewFlagsSource(),
 	},
