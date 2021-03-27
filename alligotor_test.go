@@ -192,7 +192,7 @@ var _ = Describe("config", func() {
 				fileBaseName = "config"
 
 				c = New(
-					NewFilesSource([]string{tempDir}, []string{fileBaseName}),
+					NewFilesSource(path.Join(tempDir, fileBaseName+".*")),
 					NewEnvSource(""),
 					NewFlagsSource(),
 				)
@@ -220,7 +220,7 @@ var _ = Describe("config", func() {
 					DB:  &test.DBConfig{LogLevel: "info"},
 				}
 				jsonBytes := []byte(`{"api": {"port": 2, "logLevel": "specified"}}`)
-				Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
+				Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
 
 				Expect(c.Get(&testingStruct)).To(Succeed())
 				Expect(testingStruct.DB.LogLevel).To(Equal("info"))
@@ -233,7 +233,7 @@ var _ = Describe("config", func() {
 					DBConfig:  test.DBConfig{LogLevel: "info"},
 				}
 				jsonBytes := []byte(`{"apiConfig": {"port": 2, "logLevel": "specified"}}`)
-				Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
+				Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
 
 				Expect(c.Get(&testingStruct)).To(Succeed())
 				Expect(testingStruct.DBConfig.LogLevel).To(Equal("info"))
@@ -273,7 +273,7 @@ var _ = Describe("config", func() {
 					Context("file is set", func() {
 						BeforeEach(func() {
 							jsonBytes := []byte(`{"sleep": "2s","api": {"port": 2, "logLevel": "file"}, "db": {"logLevel": "file"}}`)
-							Expect(os.WriteFile(path.Join(tempDir, fileBaseName), jsonBytes, 0600)).To(Succeed())
+							Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
 						})
 						It("overrides defaults", func() {
 							Expect(c.Get(&testingStruct)).To(Succeed())

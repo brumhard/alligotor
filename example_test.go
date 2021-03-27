@@ -51,7 +51,7 @@ func Example() {
 	// The order of sources will also set the order in which the sources overwrite each other.
 	// That's why the db timeout set in the json is overwritten with the one set in env variable.
 	cfgReader := alligotor.New(
-		alligotor.NewFilesSource([]string{dir}, []string{"example_config"}),
+		alligotor.NewFilesSource(path.Join(dir, "example_config.*")),
 		alligotor.NewEnvSource("TEST"),
 		alligotor.NewFlagsSource(),
 	)

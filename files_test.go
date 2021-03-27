@@ -1,6 +1,7 @@
 package alligotor
 
 import (
+	"bytes"
 	"os"
 	"path"
 	"reflect"
@@ -21,7 +22,7 @@ var _ = Describe("files", func() {
 test:
   sub: lel
 `)
-				yamlMap, err := unmarshal(yamlBytes)
+				yamlMap, err := unmarshal(bytes.NewReader(yamlBytes))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(yamlMap.m).To(Equal(expectedMap))
 			})
@@ -29,7 +30,7 @@ test:
 		Context("json", func() {
 			It("should succeed with valid input", func() {
 				jsonBytes := []byte(`{"test": {"sub": "lel"}}`)
-				jsonMap, err := unmarshal(jsonBytes)
+				jsonMap, err := unmarshal(bytes.NewReader(jsonBytes))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(jsonMap.m).To(Equal(expectedMap))
 			})
@@ -37,7 +38,7 @@ test:
 		Context("not supported", func() {
 			It("should fail with random input", func() {
 				randomBytes := []byte("i don't know what I'm doing here")
-				_, err := unmarshal(randomBytes)
+				_, err := unmarshal(bytes.NewReader(randomBytes))
 				Expect(err).Should(HaveOccurred())
 				Expect(err).To(Equal(ErrFileTypeNotSupported))
 			})
@@ -119,47 +120,47 @@ test:
 			})
 		})
 	})
-	Describe("findFiles", func() {
-		Context("no location", func() {
-			It("returns nil", func() {
-				Expect(findFiles(nil, nil)).To(BeNil())
-			})
-		})
-		Context("existing location", func() {
-			var tmpDir string
-			BeforeEach(func() {
-				var err error
-				tmpDir, err = os.MkdirTemp("", "tests*")
-				Expect(err).ToNot(HaveOccurred())
-			})
-			AfterEach(func() {
-				Expect(os.RemoveAll(tmpDir)).To(Succeed())
-			})
-			It("returns nil with no file found", func() {
-				Expect(findFiles([]string{tmpDir}, []string{"someFile"})).To(BeNil())
-			})
-			Context("existing file", func() {
-				var filePath string
-				BeforeEach(func() {
-					filePath = path.Join(tmpDir, "test.yml")
-					Expect(os.WriteFile(filePath, []byte("test"), os.ModePerm)).To(Succeed())
-				})
-				It("returns right filePath", func() {
-					Expect(findFiles([]string{tmpDir}, []string{"test"})).To(Equal([]string{filePath}))
-				})
-				Context("another existing file", func() {
-					var filePath2 string
-					BeforeEach(func() {
-						filePath2 = path.Join(tmpDir, "test_secret.yml")
-						Expect(os.WriteFile(filePath2, []byte("test2"), os.ModePerm)).To(Succeed())
-					})
-					It("returns right filePaths", func() {
-						Expect(findFiles([]string{tmpDir}, []string{"test", "test_secret"})).To(Equal([]string{filePath, filePath2}))
-					})
-				})
-			})
-		})
-	})
+	//Describe("findFiles", func() {
+	//	Context("no location", func() {
+	//		It("returns nil", func() {
+	//			Expect(findFiles(nil, nil)).To(BeNil())
+	//		})
+	//	})
+	//	Context("existing location", func() {
+	//		var tmpDir string
+	//		BeforeEach(func() {
+	//			var err error
+	//			tmpDir, err = os.MkdirTemp("", "tests*")
+	//			Expect(err).ToNot(HaveOccurred())
+	//		})
+	//		AfterEach(func() {
+	//			Expect(os.RemoveAll(tmpDir)).To(Succeed())
+	//		})
+	//		It("returns nil with no file found", func() {
+	//			Expect(findFiles([]string{tmpDir}, []string{"someFile"})).To(BeNil())
+	//		})
+	//		Context("existing file", func() {
+	//			var filePath string
+	//			BeforeEach(func() {
+	//				filePath = path.Join(tmpDir, "test.yml")
+	//				Expect(os.WriteFile(filePath, []byte("test"), os.ModePerm)).To(Succeed())
+	//			})
+	//			It("returns right filePath", func() {
+	//				Expect(findFiles([]string{tmpDir}, []string{"test"})).To(Equal([]string{filePath}))
+	//			})
+	//			Context("another existing file", func() {
+	//				var filePath2 string
+	//				BeforeEach(func() {
+	//					filePath2 = path.Join(tmpDir, "test_secret.yml")
+	//					Expect(os.WriteFile(filePath2, []byte("test2"), os.ModePerm)).To(Succeed())
+	//				})
+	//				It("returns right filePaths", func() {
+	//					Expect(findFiles([]string{tmpDir}, []string{"test", "test_secret"})).To(Equal([]string{filePath, filePath2}))
+	//				})
+	//			})
+	//		})
+	//	})
+	//})
 	Describe("FilesSource", func() {
 		var s *FilesSource
 		Describe("Init", func() {
@@ -174,10 +175,7 @@ test:
 				Expect(os.WriteFile(path.Join(tmpDir, "test.json"), jsonContent, os.ModePerm)).To(Succeed())
 				Expect(os.WriteFile(path.Join(tmpDir, "test.yml"), ymlContent, os.ModePerm)).To(Succeed())
 
-				s = &FilesSource{
-					locations: []string{tmpDir},
-					baseNames: []string{"test"},
-				}
+				s = NewFilesSource(path.Join(tmpDir, "test.*"))
 			})
 			It("initializes fileMaps", func() {
 				Expect(s.Init(nil)).To(Succeed())
@@ -191,9 +189,11 @@ test:
 			var field *Field
 			BeforeEach(func() {
 				s = &FilesSource{
-					fileMaps: []*ciMap{
-						{m: map[string]interface{}{"test": "1234"}},
-						{m: map[string]interface{}{"test": "1235"}},
+					ReadersSource: ReadersSource{
+						fileMaps: []*ciMap{
+							{m: map[string]interface{}{"test": "1234"}},
+							{m: map[string]interface{}{"test": "1235"}},
+						},
 					},
 				}
 
