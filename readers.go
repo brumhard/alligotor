@@ -2,10 +2,11 @@ package alligotor
 
 import (
 	"encoding/json"
-	"github.com/mitchellh/mapstructure"
-	"gopkg.in/yaml.v3"
 	"io"
 	"reflect"
+
+	"github.com/mitchellh/mapstructure"
+	"gopkg.in/yaml.v3"
 )
 
 type ReadersSource struct {
@@ -24,18 +25,11 @@ func NewReadersSource(readers ...io.Reader) *ReadersSource {
 func (s *ReadersSource) Init(_ []Field) error {
 	for _, reader := range s.readers {
 		if err := func() error {
-			var fileBytes []byte
-
 			if closer, ok := reader.(io.Closer); ok {
 				defer closer.Close()
 			}
 
-			_, err := reader.Read(fileBytes)
-			if err != nil {
-				return err
-			}
-
-			m, err := unmarshal(fileBytes)
+			m, err := unmarshal(reader)
 			if err != nil {
 				return nil
 			}
@@ -68,13 +62,13 @@ func (s *ReadersSource) Read(field *Field) (interface{}, error) {
 	return finalVal, nil
 }
 
-func unmarshal(bytes []byte) (*ciMap, error) {
+func unmarshal(r io.Reader) (*ciMap, error) {
 	m := newCiMap()
-	if err := yaml.Unmarshal(bytes, m); err == nil {
+	if err := yaml.NewDecoder(r).Decode(m); err == nil {
 		return m, nil
 	}
 
-	if err := json.Unmarshal(bytes, m); err == nil {
+	if err := json.NewDecoder(r).Decode(m); err == nil {
 		return m, nil
 	}
 
