@@ -72,6 +72,10 @@ var _ = Describe("flags", func() {
 				Expect(ok).To(BeTrue())
 				Expect(*flagInfo.valueStr).To(Equal("4000"))
 			})
+			It("returns ErrHelp if --help is specified", func() {
+				err := s.initFlagMap(nil, []string{"--help"})
+				Expect(err).To(MatchError(ErrHelp))
+			})
 		})
 		Describe("Read", func() {
 			It("returns nil if not set", func() {

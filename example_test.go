@@ -38,7 +38,7 @@ func Example() {
 	}
 }`)
 
-	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api-enabled", "true", "-h", "dbhost", "--every", "every"}
+	os.Args = []string{"cmdName", "--somelist", "a,b,c", "--api.enabled", "true", "-h", "dbhost", "--every", "every"}
 	_ = os.Setenv("TEST_MAP", "a=a,b=b,c=c")
 	_ = os.Setenv("TEST_DB_TIMEOUT", "1m0s")
 	_ = os.Setenv("TEST_CUSTOM", "key=value")

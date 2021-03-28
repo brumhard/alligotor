@@ -15,7 +15,10 @@ const (
 	defaultFlagSeparator = "."
 )
 
-var ErrMalformedFlagConfig = errors.New("malformed flag config strings")
+var (
+	ErrMalformedFlagConfig = errors.New("malformed flag config strings")
+	ErrHelp                = errors.New("help requested")
+)
 
 // FlagsSource is used to read the configuration from command line flags.
 // separator is used for nested structs to construct flag names from parent and child properties recursively.
@@ -118,9 +121,10 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 	}
 
 	if err := flagSet.Parse(args); err != nil {
-		if !errors.Is(err, pflag.ErrHelp) {
-			return err
+		if errors.Is(err, pflag.ErrHelp) {
+			return ErrHelp
 		}
+		return err
 	}
 
 	return nil
