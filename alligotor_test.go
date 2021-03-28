@@ -157,22 +157,19 @@ var _ = Describe("config", func() {
 					Port int `config:"env=test"`
 				}
 			}{}
-			fields, err := getFieldsConfigsFromValue(reflect.ValueOf(target))
+			fields, err := getFieldsConfigsFromValue(reflect.ValueOf(target), nil)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(fields).To(Equal([]Field{
-				{
-					base:    nil,
-					name:    "Sub",
-					value:   reflect.ValueOf(target.Sub),
-					configs: nil,
-				},
-				{
-					base:    []string{"Sub"},
-					name:    "Port",
-					value:   reflect.ValueOf(target.Sub.Port),
-					configs: map[string]string{"env": "test"},
-				},
-			}))
+			parentField := Field{
+				name:  "Sub",
+				value: reflect.ValueOf(target.Sub),
+			}
+			subField := Field{
+				base:    []Field{parentField},
+				name:    "Port",
+				value:   reflect.ValueOf(target.Sub.Port),
+				configs: map[string]string{"env": "test"},
+			}
+			Expect(fields).To(Equal([]Field{parentField, subField}))
 		})
 	})
 	Describe("Collector", func() {
@@ -305,7 +302,7 @@ var _ = Describe("config", func() {
 										"--db.loglevel", "flag",
 									}
 								})
-								It("overrides env but keeps defaults that are never overridden", func() {
+								It("overrides env but keeps defaults that are never overwritten", func() {
 									Expect(c.Get(&testingStruct)).To(Succeed())
 									Expect(testingStruct.Enabled).To(Equal(true))
 									Expect(testingStruct.Sleep).To(Equal(4 * time.Second))

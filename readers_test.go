@@ -91,7 +91,7 @@ test:
 		Context("nested", func() {
 			var base = "base"
 			BeforeEach(func() {
-				field.base = []string{base}
+				field.base = []Field{{name: base}}
 			})
 			It("works", func() {
 				m.m = map[string]interface{}{base: map[string]interface{}{name: 1234}}
@@ -100,7 +100,7 @@ test:
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal(1234))
 			})
-			It("name can be overridden, base remains", func() {
+			It("name can be overwritten, base remains", func() {
 				field.configs = map[string]string{fileKey: "default"}
 				m.m = map[string]interface{}{base: map[string]interface{}{"default": 1234}}
 
@@ -108,9 +108,17 @@ test:
 				Expect(err).ToNot(HaveOccurred())
 				Expect(val).To(Equal(1234))
 			})
-			It("uses overridden name even if normal one is set", func() {
+			It("uses overwritten name even if normal one is set", func() {
 				field.configs = map[string]string{fileKey: "default"}
 				m.m = map[string]interface{}{base: map[string]interface{}{name: 1235, "default": 1234}}
+
+				val, err := readFileMap(field, m)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(val).To(Equal(1234))
+			})
+			It("supports overwriting base", func() {
+				field.base = []Field{{name: base, configs: map[string]string{fileKey: "overwrittenbase"}}}
+				m.m = map[string]interface{}{"overwrittenbase": map[string]interface{}{name: 1234}}
 
 				val, err := readFileMap(field, m)
 				Expect(err).ToNot(HaveOccurred())

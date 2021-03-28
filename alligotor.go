@@ -91,7 +91,7 @@ func (c *Collector) Get(v interface{}) error {
 	}
 
 	// collect info about fields with tags, value...
-	fields, err := getFieldsConfigsFromValue(t)
+	fields, err := getFieldsConfigsFromValue(t, nil)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (c *Collector) Get(v interface{}) error {
 	return nil
 }
 
-func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]Field, error) {
+func getFieldsConfigsFromValue(value reflect.Value, base []Field) ([]Field, error) {
 	var fields []Field
 
 	for i := 0; i < value.NumField(); i++ {
@@ -134,17 +134,19 @@ func getFieldsConfigsFromValue(value reflect.Value, base ...string) ([]Field, er
 			return nil, err
 		}
 
-		fields = append(fields, NewField(
-			base, fieldType.Name,
+		field := NewField(
+			base,
+			fieldType.Name,
 			fieldType.Tag.Get(descriptionTagKey),
 			fieldValue,
 			fieldConfig,
-		))
+		)
+		fields = append(fields, field)
 
 		if fieldValue.Kind() == reflect.Struct {
-			newBase := append(base, fieldType.Name)
+			newBase := append(base, field)
 
-			subFields, err := getFieldsConfigsFromValue(fieldValue, newBase...)
+			subFields, err := getFieldsConfigsFromValue(fieldValue, newBase)
 			if err != nil {
 				return nil, err
 			}

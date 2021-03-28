@@ -107,12 +107,10 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 			return err
 		}
 
-		name := f.Name()
-		if flagConfig.LongName != "" {
-			name = flagConfig.LongName
-		}
+		localField := f
+		name := extractFlagName(&localField)
 
-		fullname := strings.ToLower(strings.Join(append(f.Base(), name), s.separator))
+		fullname := strings.ToLower(strings.Join(append(f.BaseNames(extractFlagName), name), s.separator))
 
 		s.fieldToFlagInfo[key(&fields[i])] = &flagInfo{
 			valueStr: flagSet.StringP(fullname, flagConfig.ShortName, "", f.Description()),
@@ -124,10 +122,22 @@ func (s *FlagsSource) initFlagMap(fields []Field, args []string) error {
 		if errors.Is(err, pflag.ErrHelp) {
 			return ErrHelp
 		}
+
 		return err
 	}
 
 	return nil
+}
+
+func extractFlagName(f *Field) string {
+	// ignored on this case since the error will be checked in other iterations
+	// the fields flagConfigs could be cached to improve performance
+	flagConfig, _ := readFlagConfig(f.Configs()[flagKey])
+	if flagConfig.LongName != "" {
+		return flagConfig.LongName
+	}
+
+	return f.Name()
 }
 
 type flag struct {
@@ -136,7 +146,13 @@ type flag struct {
 }
 
 func key(field *Field) string {
-	return strings.Join(append(field.Base(), field.Name()), "-")
+	usualBase := make([]string, 0, len(field.Base()))
+
+	for _, f := range field.Base() {
+		usualBase = append(usualBase, f.Name())
+	}
+
+	return strings.Join(append(usualBase, field.Name()), "-")
 }
 
 func readFlagConfig(flagStr string) (flag, error) {

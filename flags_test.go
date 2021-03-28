@@ -113,7 +113,7 @@ var _ = Describe("flags", func() {
 			Context("nested", func() {
 				var base = "base"
 				BeforeEach(func() {
-					fields[0].base = []string{base}
+					fields[0].base = []Field{{name: base}}
 					flagName = "--" + base + separator + name
 				})
 				It("uses separator", func() {
@@ -129,8 +129,14 @@ var _ = Describe("flags", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(val).To(Equal([]byte("3000")))
 				})
+				It("supports overwriting base", func() {
+					fields[0].base = []Field{{name: base, configs: map[string]string{flagKey: "overwrittenbase"}}}
+					Expect(s.initFlagMap(fields, []string{"--" + "overwrittenbase" + separator + name, "3000"})).To(Succeed())
+					val, err := s.Read(&fields[0])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(val).To(Equal([]byte("3000")))
+				})
 			})
 		})
 	})
-
 })

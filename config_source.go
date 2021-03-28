@@ -7,7 +7,7 @@ import (
 // Field is a struct to hold all information for a struct's field that should be filled with configuration.
 type Field struct {
 	// base contains all the parents properties' names in order.
-	base []string
+	base []Field
 	// name is the name of the current property.
 	name string
 	// description contains the value contained in the description struct tag.
@@ -19,7 +19,7 @@ type Field struct {
 	configs map[string]string
 }
 
-func NewField(base []string, name, description string, value reflect.Value, configs map[string]string) Field {
+func NewField(base []Field, name, description string, value reflect.Value, configs map[string]string) Field {
 	return Field{
 		base:        base,
 		name:        name,
@@ -29,8 +29,20 @@ func NewField(base []string, name, description string, value reflect.Value, conf
 	}
 }
 
-func (f *Field) Base() []string {
+func (f *Field) Base() []Field {
 	return f.base
+}
+
+func (f *Field) BaseNames(nameExtractFunc func(*Field) string) []string {
+	baseNames := make([]string, 0, len(f.Base()))
+
+	for _, field := range f.Base() {
+		localField := field
+		name := nameExtractFunc(&localField)
+		baseNames = append(baseNames, name)
+	}
+
+	return baseNames
 }
 
 func (f *Field) Name() string {

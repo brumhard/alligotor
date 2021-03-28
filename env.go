@@ -64,12 +64,9 @@ func (s *EnvSource) Read(field *Field) (interface{}, error) {
 }
 
 func readEnv(f *Field, prefix string, envMap map[string]string, separator string) []byte {
-	name := f.Name()
-	if f.Configs()[envKey] != "" {
-		name = f.Configs()[envKey]
-	}
+	name := extractEnvName(f)
 
-	distinctEnvName := strings.Join(append(f.Base(), name), separator)
+	distinctEnvName := strings.Join(append(f.BaseNames(extractEnvName), name), separator)
 	if prefix != "" {
 		distinctEnvName = prefix + separator + distinctEnvName
 	}
@@ -80,6 +77,14 @@ func readEnv(f *Field, prefix string, envMap map[string]string, separator string
 	}
 
 	return []byte(envVal)
+}
+
+func extractEnvName(f *Field) string {
+	if f.Configs()[envKey] != "" {
+		return f.Configs()[envKey]
+	}
+
+	return f.Name()
 }
 
 func getEnvAsMap() map[string]string {

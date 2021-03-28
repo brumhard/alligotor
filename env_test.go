@@ -64,7 +64,7 @@ var _ = Describe("env", func() {
 				val := readEnv(field, "prefix", map[string]string{"PREFIX" + separator + "OVERWRITE": "3000"}, separator)
 				Expect(val).To(Equal([]byte("3000")))
 			})
-			It("uses overridden name even if normal one is set", func() {
+			It("uses overwritten name even if normal one is set", func() {
 				field.configs = map[string]string{envKey: "overwrite"}
 				val := readEnv(
 					field, "prefix",
@@ -80,24 +80,29 @@ var _ = Describe("env", func() {
 			var base = "base"
 
 			BeforeEach(func() {
-				field.base = []string{base}
+				field.base = []Field{{name: base}}
 			})
 			It("uses separator", func() {
 				val := readEnv(field, "", map[string]string{strings.ToUpper(base + separator + name): "1234"}, separator)
 				Expect(val).To(Equal([]byte("1234")))
 			})
-			It("can be overridden", func() {
+			It("can be overwritten", func() {
 				field.configs = map[string]string{envKey: "overwrite"}
 				val := readEnv(field, "", map[string]string{strings.ToUpper(base + separator + "overwrite"): "1234"}, separator)
 				Expect(val).To(Equal([]byte("1234")))
 			})
-			It("uses overridden name even if normal one is set", func() {
+			It("uses overwritten name even if normal one is set", func() {
 				field.configs = map[string]string{envKey: "overwrite"}
 				val := readEnv(field, "", map[string]string{
 					strings.ToUpper(base + separator + name):        "1234",
 					strings.ToUpper(base + separator + "overwrite"): "1235",
 				}, separator)
 				Expect(val).To(Equal([]byte("1235")))
+			})
+			It("supports overwriting base", func() {
+				field.base = []Field{{name: base, configs: map[string]string{envKey: "overwrittenbase"}}}
+				val := readEnv(field, "", map[string]string{strings.ToUpper("overwrittenbase" + separator + name): "1234"}, separator)
+				Expect(val).To(Equal([]byte("1234")))
 			})
 		})
 	})

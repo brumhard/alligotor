@@ -95,12 +95,9 @@ func unmarshal(r io.Reader) (*ciMap, error) {
 // It returns the right type if there is no decoding error otherwise it returns a byte slice that could potentially
 // be decoded later into the target type.
 func readFileMap(f *Field, m *ciMap) (interface{}, error) {
-	name := f.Name()
-	if f.Configs()[fileKey] != "" {
-		name = f.Configs()[fileKey]
-	}
+	name := extractFileName(f)
 
-	valueForField, ok := m.Get(f.Base(), name)
+	valueForField, ok := m.Get(f.BaseNames(extractFileName), name)
 	if !ok {
 		return nil, nil
 	}
@@ -122,4 +119,12 @@ func readFileMap(f *Field, m *ciMap) (interface{}, error) {
 	}
 
 	return fieldTypeNew.Elem().Interface(), nil
+}
+
+func extractFileName(f *Field) string {
+	if f.Configs()[fileKey] != "" {
+		return f.Configs()[fileKey]
+	}
+
+	return f.Name()
 }
