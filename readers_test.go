@@ -88,6 +88,14 @@ test:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(val).To(Equal(3000))
 		})
+		It("supports arrays", func() {
+			field.value = reflect.ValueOf([]int{})
+			m.m = map[string]interface{}{name: []int{1, 2, 3, 4, 5}}
+
+			val, err := readFileMap(field, m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(val).To(Equal([]int{1, 2, 3, 4, 5}))
+		})
 		Context("nested", func() {
 			var base = "base"
 			BeforeEach(func() {

@@ -76,6 +76,13 @@ type Config {
 
 You can set the value for the DB.Host with the env variable `<PREFIX>_DB_HOST` but not with `<PREFIX>_HOST` directly.
 
+### Arrays
+
+Since there is no nice way of representing arrays in all config sources (for example environment variables) it's
+currently not supported in these sources.
+
+The `ReadersSource` on the other hand can easily read arrays.
+
 ---
 
 ## Minimal example
