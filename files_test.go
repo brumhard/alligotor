@@ -1,212 +1,107 @@
 package alligotor
 
 import (
-	"bytes"
+	"io"
 	"os"
 	"path"
-	"reflect"
+	"strings"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("files", func() {
-	Describe("unmarshal", func() {
-		expectedMap := map[string]interface{}{
-			"test": map[string]interface{}{"sub": "lel"},
-		}
+	Describe("loadFiles", func() {
+		var (
+			nilGlobF = globFunc(func(pattern string) ([]string, error) {
+				return nil, nil
+			})
+			globF = globFunc(func(pattern string) ([]string, error) {
+				return []string{pattern}, nil
+			})
+			openF = openFunc(func(path string) (io.Reader, error) {
+				return strings.NewReader(path), nil
+			})
+		)
+		Context("no globs", func() {
+			It("returns empty slice", func() {
+				readers, err := loadFiles(nil, globF, openF)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readers).To(HaveLen(0))
+			})
+		})
+		Context("no matches found for globs", func() {
+			It("returns empty slice", func() {
+				readers, err := loadFiles([]string{"test1", "test2"}, nilGlobF, openF)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readers).To(HaveLen(0))
+			})
+		})
+		Context("existing matches", func() {
+			It("returns readers for all matches", func() {
+				input := []string{"test1", "test2"}
 
-		Context("yaml", func() {
-			It("should succeed with valid input", func() {
-				yamlBytes := []byte(`---
-test:
-  sub: lel
-`)
-				yamlMap, err := unmarshal(bytes.NewReader(yamlBytes))
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(yamlMap.m).To(Equal(expectedMap))
-			})
-		})
-		Context("json", func() {
-			It("should succeed with valid input", func() {
-				jsonBytes := []byte(`{"test": {"sub": "lel"}}`)
-				jsonMap, err := unmarshal(bytes.NewReader(jsonBytes))
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(jsonMap.m).To(Equal(expectedMap))
-			})
-		})
-		Context("not supported", func() {
-			It("should fail with random input", func() {
-				randomBytes := []byte("i don't know what I'm doing here")
-				_, err := unmarshal(bytes.NewReader(randomBytes))
-				Expect(err).Should(HaveOccurred())
-				Expect(err).To(Equal(ErrFileTypeNotSupported))
+				readers, err := loadFiles(input, globF, openF)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readers).To(HaveLen(2))
+
+				var contents []string
+				for _, reader := range readers {
+					content, err := io.ReadAll(reader)
+					Expect(err).NotTo(HaveOccurred())
+					contents = append(contents, string(content))
+				}
+				Expect(input).To(Equal(contents))
 			})
 		})
 	})
-	Describe("readFileMap", func() {
+	Describe("NewFSFilesSource", func() {
+		var s *FilesSource
+		BeforeEach(func() {
+			s = NewFSFilesSource(
+				fstest.MapFS(map[string]*fstest.MapFile{
+					"test.json": {Data: []byte(`{"test":"json"}`)},
+					"test.yml":  {Data: []byte("test: yml")},
+				}),
+				"test.*",
+			)
+		})
+		It("loads the files fileMaps correctly", func() {
+			Expect(s.Init(nil)).To(Succeed())
+			Expect(s.fileMaps).To(Equal([]*ciMap{
+				{m: map[string]interface{}{"test": "json"}},
+				{m: map[string]interface{}{"test": "yml"}},
+			}))
+		})
+	})
+	Describe("NewFilesSource", func() {
 		var (
-			m     *ciMap
-			field *Field
-			name  = "someInt"
+			s      *FilesSource
+			tmpDir string
 		)
 		BeforeEach(func() {
-			m = newCiMap()
-			field = &Field{
-				name:  name,
-				value: reflect.ValueOf(0),
-			}
-		})
-		It("returns nil if not set", func() {
-			val, err := readFileMap(field, m)
+			var err error
+			tmpDir, err = os.MkdirTemp("", "tests*")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(val).To(BeNil())
+
+			jsonContent := []byte(`{"test":"json"}`)
+			ymlContent := []byte(`test: "yml"`)
+
+			Expect(os.WriteFile(path.Join(tmpDir, "test.json"), jsonContent, os.ModePerm)).To(Succeed())
+			Expect(os.WriteFile(path.Join(tmpDir, "test.yml"), ymlContent, os.ModePerm)).To(Succeed())
+
+			s = NewFilesSource(path.Join(tmpDir, "test.*"))
 		})
-		It("returns empty string if set to empty string", func() {
-			m.m = map[string]interface{}{name: ""}
-
-			val, err := readFileMap(field, m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(val).To(Equal([]byte("")))
+		AfterEach(func() {
+			Expect(os.RemoveAll(tmpDir)).To(Succeed())
 		})
-		It("return []byte if type mismatch but value is string", func() {
-			m.m = map[string]interface{}{name: "1234"}
-
-			val, err := readFileMap(field, m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(val).To(Equal([]byte("1234")))
-		})
-		It("returns error if type mismatch but value is not a string", func() {
-			m.m = map[string]interface{}{name: []string{"1234"}}
-
-			_, err := readFileMap(field, m)
-			Expect(err).To(HaveOccurred())
-		})
-		It("uses configured overwrite long name", func() {
-			field.configs = map[string]string{fileKey: "overwrite"}
-			m.m = map[string]interface{}{"overwrite": 3000}
-
-			val, err := readFileMap(field, m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(val).To(Equal(3000))
-		})
-		Context("nested", func() {
-			var base = "base"
-			BeforeEach(func() {
-				field.base = []string{base}
-			})
-			It("works", func() {
-				m.m = map[string]interface{}{base: map[string]interface{}{name: 1234}}
-
-				val, err := readFileMap(field, m)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(val).To(Equal(1234))
-			})
-			It("name can be overridden, base remains", func() {
-				field.configs = map[string]string{fileKey: "default"}
-				m.m = map[string]interface{}{base: map[string]interface{}{"default": 1234}}
-
-				val, err := readFileMap(field, m)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(val).To(Equal(1234))
-			})
-			It("uses overridden name even if normal one is set", func() {
-				field.configs = map[string]string{fileKey: "default"}
-				m.m = map[string]interface{}{base: map[string]interface{}{name: 1235, "default": 1234}}
-
-				val, err := readFileMap(field, m)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(val).To(Equal(1234))
-			})
-		})
-	})
-	//Describe("findFiles", func() {
-	//	Context("no location", func() {
-	//		It("returns nil", func() {
-	//			Expect(findFiles(nil, nil)).To(BeNil())
-	//		})
-	//	})
-	//	Context("existing location", func() {
-	//		var tmpDir string
-	//		BeforeEach(func() {
-	//			var err error
-	//			tmpDir, err = os.MkdirTemp("", "tests*")
-	//			Expect(err).ToNot(HaveOccurred())
-	//		})
-	//		AfterEach(func() {
-	//			Expect(os.RemoveAll(tmpDir)).To(Succeed())
-	//		})
-	//		It("returns nil with no file found", func() {
-	//			Expect(findFiles([]string{tmpDir}, []string{"someFile"})).To(BeNil())
-	//		})
-	//		Context("existing file", func() {
-	//			var filePath string
-	//			BeforeEach(func() {
-	//				filePath = path.Join(tmpDir, "test.yml")
-	//				Expect(os.WriteFile(filePath, []byte("test"), os.ModePerm)).To(Succeed())
-	//			})
-	//			It("returns right filePath", func() {
-	//				Expect(findFiles([]string{tmpDir}, []string{"test"})).To(Equal([]string{filePath}))
-	//			})
-	//			Context("another existing file", func() {
-	//				var filePath2 string
-	//				BeforeEach(func() {
-	//					filePath2 = path.Join(tmpDir, "test_secret.yml")
-	//					Expect(os.WriteFile(filePath2, []byte("test2"), os.ModePerm)).To(Succeed())
-	//				})
-	//				It("returns right filePaths", func() {
-	//					Expect(findFiles([]string{tmpDir}, []string{"test", "test_secret"})).To(Equal([]string{filePath, filePath2}))
-	//				})
-	//			})
-	//		})
-	//	})
-	//})
-	Describe("FilesSource", func() {
-		var s *FilesSource
-		Describe("Init", func() {
-			BeforeEach(func() {
-				var err error
-				tmpDir, err := os.MkdirTemp("", "tests*")
-				Expect(err).ToNot(HaveOccurred())
-
-				jsonContent := []byte(`{"test":"1234"}`)
-				ymlContent := []byte(`test: "1235"`)
-
-				Expect(os.WriteFile(path.Join(tmpDir, "test.json"), jsonContent, os.ModePerm)).To(Succeed())
-				Expect(os.WriteFile(path.Join(tmpDir, "test.yml"), ymlContent, os.ModePerm)).To(Succeed())
-
-				s = NewFilesSource(path.Join(tmpDir, "test.*"))
-			})
-			It("initializes fileMaps", func() {
-				Expect(s.Init(nil)).To(Succeed())
-				Expect(s.fileMaps).To(Equal([]*ciMap{
-					{m: map[string]interface{}{"test": "1234"}},
-					{m: map[string]interface{}{"test": "1235"}},
-				}))
-			})
-		})
-		Describe("Read", func() {
-			var field *Field
-			BeforeEach(func() {
-				s = &FilesSource{
-					ReadersSource: ReadersSource{
-						fileMaps: []*ciMap{
-							{m: map[string]interface{}{"test": "1234"}},
-							{m: map[string]interface{}{"test": "1235"}},
-						},
-					},
-				}
-
-				field = &Field{
-					name:  "test",
-					value: reflect.ValueOf(""),
-				}
-			})
-			It("fileMaps override each other", func() {
-				val, err := s.Read(field)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(val).To(Equal("1235"))
-			})
+		It("loads the files fileMaps correctly", func() {
+			Expect(s.Init(nil)).To(Succeed())
+			Expect(s.fileMaps).To(Equal([]*ciMap{
+				{m: map[string]interface{}{"test": "json"}},
+				{m: map[string]interface{}{"test": "yml"}},
+			}))
 		})
 	})
 })
