@@ -20,7 +20,7 @@ var _ = Describe("files", func() {
 			globF = func(pattern string) ([]string, error) {
 				return []string{pattern}, nil
 			}
-			openF = func(path string) (io.Reader, error) {
+			openF = func(path string) (io.Reader, error) { // nolint: unparam //needs to match openFunc sign
 				return strings.NewReader(path), nil
 			}
 		)

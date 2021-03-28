@@ -1,8 +1,8 @@
 package test
 
 type APIConfig struct {
-	Port     int
 	LogLevel string
+	Port     int
 }
 
 type DBConfig struct {
