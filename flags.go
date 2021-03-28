@@ -12,7 +12,7 @@ import (
 const (
 	flagKey              = "flag"
 	flagConfigSeparator  = " "
-	defaultFlagSeparator = "-"
+	defaultFlagSeparator = "."
 )
 
 var ErrMalformedFlagConfig = errors.New("malformed flag config strings")

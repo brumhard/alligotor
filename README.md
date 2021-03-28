@@ -121,7 +121,7 @@ As shown in the latter example, the sources support an option to set a custom se
 explicitly, it will be set to the defaults:
 
 - env vars: `_` (underscore)
-- cli flags: `-` (dash)
+- cli flags: `.` (dash)
 
 ---
 

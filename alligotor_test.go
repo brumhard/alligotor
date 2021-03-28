@@ -300,9 +300,9 @@ var _ = Describe("config", func() {
 								BeforeEach(func() {
 									os.Args = []string{"commandName",
 										"--sleep", "4s",
-										"--api-port", "4",
-										"--api-loglevel", "flag",
-										"--db-loglevel", "flag",
+										"--api.port", "4",
+										"--api.loglevel", "flag",
+										"--db.loglevel", "flag",
 									}
 								})
 								It("overrides env but keeps defaults that are never overridden", func() {
