@@ -14,15 +14,15 @@ import (
 var _ = Describe("files", func() {
 	Describe("loadFiles", func() {
 		var (
-			nilGlobF = globFunc(func(pattern string) ([]string, error) {
+			nilGlobF = func(pattern string) ([]string, error) {
 				return nil, nil
-			})
-			globF = globFunc(func(pattern string) ([]string, error) {
+			}
+			globF = func(pattern string) ([]string, error) {
 				return []string{pattern}, nil
-			})
-			openF = openFunc(func(path string) (io.Reader, error) {
+			}
+			openF = func(path string) (io.Reader, error) {
 				return strings.NewReader(path), nil
-			})
+			}
 		)
 		Context("no globs", func() {
 			It("returns empty slice", func() {

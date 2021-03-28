@@ -38,7 +38,7 @@ test:
 				randomBytes := []byte("i don't know what I'm doing here")
 				_, err := unmarshal(bytes.NewReader(randomBytes))
 				Expect(err).Should(HaveOccurred())
-				Expect(err).To(Equal(ErrFileTypeNotSupported))
+				Expect(err).To(Equal(ErrFileFormatNotSupported))
 			})
 		})
 	})

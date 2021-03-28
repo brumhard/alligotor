@@ -5,17 +5,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
-const fileKey = "file"
-
-var ErrFileTypeNotSupported = errors.New("could not unmarshal file, file type not supported or malformed content")
-
-type globFunc func(pattern string) ([]string, error)
-
-type openFunc func(path string) (io.Reader, error)
+type (
+	globFunc = func(pattern string) ([]string, error)
+	openFunc = func(path string) (io.Reader, error)
+)
 
 // FilesSource is used to read the configuration from files.
 // locations can be used to define where to look for files with the defined baseNames.

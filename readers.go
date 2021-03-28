@@ -6,8 +6,13 @@ import (
 	"reflect"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
+
+const fileKey = "file"
+
+var ErrFileFormatNotSupported = errors.New("file format not supported or malformed content")
 
 type ReadersSource struct {
 	readers  []io.Reader
@@ -72,7 +77,7 @@ func unmarshal(r io.Reader) (*ciMap, error) {
 		return m, nil
 	}
 
-	return nil, ErrFileTypeNotSupported
+	return nil, ErrFileFormatNotSupported
 }
 
 func readFileMap(f *Field, m *ciMap) (interface{}, error) {
