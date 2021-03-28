@@ -58,6 +58,26 @@ source.
 
 ---
 
+## Known unsupported usecases
+
+### Read directly into properties of embedded structs
+
+Generally embedded structs are supported but certain use cases don't work. So for example in the following struct:
+
+```Go
+type DB struct {
+    Host string
+}
+
+type Config {
+    DB
+}
+```
+
+You can set the value for the DB.Host with the env variable `<PREFIX>_DB_HOST` but not with `<PREFIX>_HOST` directly.
+
+---
+
 ## Minimal example
 
 ```Go
