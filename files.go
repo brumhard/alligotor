@@ -12,20 +12,24 @@ type (
 	openFunc = func(path string) (io.Reader, error)
 )
 
-// FilesSource is used to read the configuration from files.
-// locations can be used to define where to look for files with the defined baseNames.
-// The baseNames define the names of the files to look for without the file extension
-// (as multiple file types are supported).
-// Currently only json and yaml files are supported.
+// FilesSource is a wrapper around ReadersSource to automatically find the needed readers in a filesystem.
+// To use the local FS the NewFilesSource can be used to find the files.
+// NewFSFilesSource can be used for other usecases where the FS is present on S3 or an embed.FS.
+// This differentiation was implemented since the os.DirFS does not really support relative and absolute paths
+// easily.
 type FilesSource struct {
-	globs    []string
+	globs []string
+	// globFunc is used to match globs on the selected file system
+	// The to used implementations are fs.Glob and filepath.Glob
 	globFunc globFunc
+	// openFunc is used to open a file in the selected file system
+	// The used implementations are fsys.Open and os.Open
 	openFunc openFunc
 	ReadersSource
 }
 
-// Init initializes the fileMaps property.
-// It should be used right before calling the Read method to load the latest config files' states.
+// Init tries to find files on the filesystem matching the supplied globs and reads them.
+// Afterwards the underlying ReadersSource is initialized.
 func (s *FilesSource) Init(fields []Field) error {
 	files, err := loadFiles(s.globs, s.globFunc, s.openFunc)
 	if err != nil {
@@ -37,6 +41,8 @@ func (s *FilesSource) Init(fields []Field) error {
 	return s.ReadersSource.Init(fields)
 }
 
+// loadFiles tries to find files that match the globs using the globF function.
+// If any matches are found it then opens the file using the openF function and returns the opened files.
 func loadFiles(globs []string, globF globFunc, openF openFunc) ([]io.Reader, error) {
 	var files []io.Reader
 

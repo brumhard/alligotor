@@ -14,11 +14,20 @@ const fileKey = "file"
 
 var ErrFileFormatNotSupported = errors.New("file format not supported or malformed content")
 
+// ReadersSource is used to read configuration from any type that implements the io.Reader interface.
+// The data in the readers should be in one of the supported file formats (currently yml and json).
+// This enables a wide range of usages like for example reading the config from an http endpoint or a file.
+//
+// The ReadersSource accepts io.Reader to support as many types as possible. To improve the experience with sources
+// that need to be closed it will also check if the supplied type implements io.Closer and closes the reader
+// if it does.
 type ReadersSource struct {
 	readers  []io.Reader
 	fileMaps []*ciMap
 }
 
+// NewReadersSource returns a new ReadersSource that reads from one or more readers.
+// If the input reader slice is empty this will be a noop reader.
 func NewReadersSource(readers ...io.Reader) *ReadersSource {
 	return &ReadersSource{
 		readers: readers,
@@ -67,6 +76,8 @@ func (s *ReadersSource) Read(field *Field) (interface{}, error) {
 	return finalVal, nil
 }
 
+// unmarshal tries to decode the reader's data into any supported fileType. If it does not work for any file format
+// an ErrFileFormatNotSupported is returned.
 func unmarshal(r io.Reader) (*ciMap, error) {
 	m := newCiMap()
 	if err := yaml.NewDecoder(r).Decode(m); err == nil {
@@ -80,6 +91,9 @@ func unmarshal(r io.Reader) (*ciMap, error) {
 	return nil, ErrFileFormatNotSupported
 }
 
+// readFileMap reads the value for a given field from the given ciMap.
+// It returns the right type if there is no decoding error otherwise it returns a byte slice that could potentially
+// be decoded later into the target type.
 func readFileMap(f *Field, m *ciMap) (interface{}, error) {
 	name := f.Name()
 	if f.Configs()[fileKey] != "" {
