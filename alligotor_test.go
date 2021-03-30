@@ -1,6 +1,7 @@
 package alligotor
 
 import (
+	"bytes"
 	"os"
 	"path"
 	"reflect"
@@ -173,80 +174,90 @@ var _ = Describe("config", func() {
 		})
 	})
 	Describe("Collector", func() {
-		Describe("Get", func() {
-			var (
-				tempDir      string
-				c            *Collector
-				fileBaseName string
-			)
+		Context("General", func() {
+			Describe("Get", func() {
+				var c *Collector
 
-			BeforeEach(func() {
-				var err error
-				// create temp dir
-				tempDir, err = os.MkdirTemp("", "tests*")
-				Expect(err).ShouldNot(HaveOccurred())
-
-				fileBaseName = "config"
-
-				c = New(
-					NewFilesSource(path.Join(tempDir, fileBaseName+".*")),
-					NewEnvSource(""),
-					NewFlagsSource(),
-				)
-			})
-			AfterEach(func() {
-				// delete temp dir
-				Expect(os.RemoveAll(tempDir)).To(Succeed())
-			})
-			It("returns error if v is not a pointer", func() {
-				err := (&Collector{}).Get(struct{}{})
-				Expect(err).To(MatchError(ErrPointerExpected))
-			})
-			It("returns error if v is not a pointer to a struct", func() {
-				test := 5
-				err := (&Collector{}).Get(&test)
-				Expect(err).To(MatchError(ErrStructExpected))
-			})
-			It("works if v is a pointer", func() {
-				err := (&Collector{}).Get(&struct{}{})
-				Expect(err).ShouldNot(HaveOccurred())
-			})
-			It("supports pointers for properties", func() {
-				testingStruct := testingConfigPointers{
-					API: &test.APIConfig{Port: 1, LogLevel: "info"},
-					DB:  &test.DBConfig{LogLevel: "info"},
-				}
-				jsonBytes := []byte(`{"api": {"port": 2, "logLevel": "specified"}}`)
-				Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
-
-				Expect(c.Get(&testingStruct)).To(Succeed())
-				Expect(testingStruct.DB.LogLevel).To(Equal("info"))
-				Expect(testingStruct.API.Port).To(Equal(2))
-				Expect(testingStruct.API.LogLevel).To(Equal("specified"))
-			})
-			It("supports embedded structs for properties", func() {
-				testingStruct := testingConfigEmbedded{
-					APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
-					DBConfig:  test.DBConfig{LogLevel: "info"},
-				}
-				jsonBytes := []byte(`{"apiConfig": {"port": 2, "logLevel": "specified"}}`)
-				Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
-
-				Expect(c.Get(&testingStruct)).To(Succeed())
-				Expect(testingStruct.DBConfig.LogLevel).To(Equal("info"))
-				Expect(testingStruct.APIConfig.Port).To(Equal(2))
-				Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
-			})
-			Context("Integration Tests", func() {
-				var args []string
-				var env map[string]string
 				BeforeEach(func() {
+					c = New()
+				})
+
+				It("returns error if v is not a pointer", func() {
+					err := (&Collector{}).Get(struct{}{})
+					Expect(err).To(MatchError(ErrPointerExpected))
+				})
+				It("returns error if v is not a pointer to a struct", func() {
+					test := 5
+					err := (&Collector{}).Get(&test)
+					Expect(err).To(MatchError(ErrStructExpected))
+				})
+				It("works if v is a pointer", func() {
+					err := (&Collector{}).Get(&struct{}{})
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				It("supports pointers for properties", func() {
+					testingStruct := testingConfigPointers{
+						API: &test.APIConfig{Port: 1, LogLevel: "info"},
+						DB:  &test.DBConfig{LogLevel: "info"},
+					}
+
+					jsonBytes := []byte(`{"api": {"port": 2, "logLevel": "specified"}}`)
+					c.Sources = []ConfigSource{NewReadersSource(bytes.NewReader(jsonBytes))}
+
+					Expect(c.Get(&testingStruct)).To(Succeed())
+					Expect(testingStruct.DB.LogLevel).To(Equal("info"))
+					Expect(testingStruct.API.Port).To(Equal(2))
+					Expect(testingStruct.API.LogLevel).To(Equal("specified"))
+				})
+				It("supports embedded structs for properties", func() {
+					testingStruct := testingConfigEmbedded{
+						APIConfig: test.APIConfig{Port: 1, LogLevel: "info"},
+						DBConfig:  test.DBConfig{LogLevel: "info"},
+					}
+					jsonBytes := []byte(`{"apiConfig": {"port": 2, "logLevel": "specified"}}`)
+					c.Sources = []ConfigSource{NewReadersSource(bytes.NewReader(jsonBytes))}
+
+					Expect(c.Get(&testingStruct)).To(Succeed())
+					Expect(testingStruct.DBConfig.LogLevel).To(Equal("info"))
+					Expect(testingStruct.APIConfig.Port).To(Equal(2))
+					Expect(testingStruct.APIConfig.LogLevel).To(Equal("specified"))
+				})
+			})
+		})
+
+		Context("Integration test", func() {
+			Describe("Get", func() {
+				var (
+					tempDir      string
+					c            *Collector
+					fileBaseName string
+					args         []string
+					env          map[string]string
+				)
+
+				BeforeEach(func() {
+					var err error
+					// create temp dir
+					tempDir, err = os.MkdirTemp("", "tests*")
+					Expect(err).ShouldNot(HaveOccurred())
+
 					// capture os.Args
 					args = os.Args
 					// capture env
 					env = getEnvAsMap()
+
+					fileBaseName = "config"
+
+					c = New(
+						NewFilesSource(path.Join(tempDir, fileBaseName+".*")),
+						NewEnvSource(""),
+						NewFlagsSource(),
+					)
 				})
 				AfterEach(func() {
+					// delete temp dir
+					Expect(os.RemoveAll(tempDir)).To(Succeed())
 					// recover os.Args
 					os.Args = args
 					// recover env
@@ -313,9 +324,11 @@ var _ = Describe("config", func() {
 							})
 						})
 					})
+
 				})
 			})
 		})
+
 		Describe("custom string map and slice", func() {
 			Describe("string slice", func() {
 				It("works for Unmarshal", func() {
@@ -367,4 +380,10 @@ func (t *testType) UnmarshalText(text []byte) error {
 	t.S = string(text)
 
 	return nil
+}
+
+type SourceFunc func(field *Field) (interface{}, error)
+
+func (f SourceFunc) Read(field *Field) (interface{}, error) {
+	return f(field)
 }
