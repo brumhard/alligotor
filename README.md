@@ -277,6 +277,9 @@ For sources that only support setting values as strings (like for example enviro
 slice containing the string and it will automatically be converted to the target type if possible. Any other type is
 used directly leading to an error on type mismatch.
 
+> You should not return structs directly since this could lead to errors if some struct properties are set and others
+> are not. This would then overwrite the target with the zero value, which is not intended.
+
 The received fields match directly to the fields in the config. So for example for a config struct like the following:
 
 ```Go

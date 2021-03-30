@@ -280,28 +280,27 @@ var _ = Describe("config", func() {
 					})
 					Context("file is set", func() {
 						BeforeEach(func() {
-							jsonBytes := []byte(`{"sleep": "2s","api": {"port": 2, "logLevel": "file"}, "db": {"logLevel": "file"}}`)
+							jsonBytes := []byte(`{"sleep": "2s","api": {"port": 2}, "db": {"logLevel": "file"}}`)
 							Expect(os.WriteFile(path.Join(tempDir, fileBaseName+".json"), jsonBytes, 0600)).To(Succeed())
 						})
-						It("overrides defaults", func() {
+						It("overrides defaults only if set", func() {
 							Expect(c.Get(&testingStruct)).To(Succeed())
 							Expect(testingStruct.Sleep).To(Equal(2 * time.Second))
 							Expect(testingStruct.API.Port).To(Equal(2))
-							Expect(testingStruct.API.LogLevel).To(Equal("file"))
+							Expect(testingStruct.API.LogLevel).To(Equal("info"))
 							Expect(testingStruct.DB.LogLevel).To(Equal("file"))
 						})
 						Context("env is set", func() {
 							BeforeEach(func() {
 								Expect(os.Setenv("SLEEP", "3s")).To(Succeed())
 								Expect(os.Setenv("API_PORT", "3")).To(Succeed())
-								Expect(os.Setenv("API_LOGLEVEL", "env")).To(Succeed())
 								Expect(os.Setenv("DB_LOGLEVEL", "env")).To(Succeed())
 							})
-							It("overrides file", func() {
+							It("overrides file, keeps defaults if not set", func() {
 								Expect(c.Get(&testingStruct)).To(Succeed())
 								Expect(testingStruct.Sleep).To(Equal(3 * time.Second))
 								Expect(testingStruct.API.Port).To(Equal(3))
-								Expect(testingStruct.API.LogLevel).To(Equal("env"))
+								Expect(testingStruct.API.LogLevel).To(Equal("info"))
 								Expect(testingStruct.DB.LogLevel).To(Equal("env"))
 							})
 							Context("flags are set", func() {
@@ -309,7 +308,6 @@ var _ = Describe("config", func() {
 									os.Args = []string{"commandName",
 										"--sleep", "4s",
 										"--api.port", "4",
-										"--api.loglevel", "flag",
 										"--db.loglevel", "flag",
 									}
 								})
@@ -318,7 +316,7 @@ var _ = Describe("config", func() {
 									Expect(testingStruct.Enabled).To(Equal(true))
 									Expect(testingStruct.Sleep).To(Equal(4 * time.Second))
 									Expect(testingStruct.API.Port).To(Equal(4))
-									Expect(testingStruct.API.LogLevel).To(Equal("flag"))
+									Expect(testingStruct.API.LogLevel).To(Equal("info"))
 									Expect(testingStruct.DB.LogLevel).To(Equal("flag"))
 								})
 							})
