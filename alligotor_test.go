@@ -379,9 +379,3 @@ func (t *testType) UnmarshalText(text []byte) error {
 
 	return nil
 }
-
-type SourceFunc func(field *Field) (interface{}, error)
-
-func (f SourceFunc) Read(field *Field) (interface{}, error) {
-	return f(field)
-}
