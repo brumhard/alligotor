@@ -3,7 +3,7 @@ module github.com/brumhard/alligotor
 go 1.16
 
 require (
-	github.com/mitchellh/mapstructure v1.3.3
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.10.3
 	github.com/pkg/errors v0.9.1
