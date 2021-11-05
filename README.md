@@ -1,5 +1,7 @@
 # Alligotor
 
+<img src="docs/alligotor.png" width="70%">
+
 ![golangci-lint](https://github.com/brumhard/alligotor/workflows/golangci-lint/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/brumhard/alligotor)](https://goreportcard.com/report/github.com/brumhard/alligotor)
 [![Go Reference](https://pkg.go.dev/badge/github.com/brumhard/alligotor.svg)](https://pkg.go.dev/github.com/brumhard/alligotor)
@@ -91,30 +93,30 @@ The `ReadersSource` on the other hand can easily read arrays.
 package main
 
 import (
-	"github.com/brumhard/alligotor"
-	"go.uber.org/zap/zapcore"
-	"time"
+ "github.com/brumhard/alligotor"
+ "go.uber.org/zap/zapcore"
+ "time"
 )
 
 func main() {
-	// define the config struct
-	cfg := struct {
-		SomeList []string
-		SomeMap  map[string]string
-		API      struct {
-			Enabled  bool
-			LogLevel zapcore.Level
-		}
-		DB struct {
-			HostName string
-			Timeout  time.Duration
-		}
-	}{
-		// could define defaults here
-	}
+ // define the config struct
+ cfg := struct {
+  SomeList []string
+  SomeMap  map[string]string
+  API      struct {
+   Enabled  bool
+   LogLevel zapcore.Level
+  }
+  DB struct {
+   HostName string
+   Timeout  time.Duration
+  }
+ }{
+  // could define defaults here
+ }
 
-	// get the values
-	_ = alligotor.Get(&cfg)
+ // get the values
+ _ = alligotor.Get(&cfg)
 }
 ```
 
@@ -307,4 +309,3 @@ type ConfigSourceInitializer interface {
     Init(fields []Field) error
 }
 ```
-
