@@ -1,6 +1,8 @@
 # Alligotor
+<p align="center">
+  <img src="docs/alligotor.png" width="70%">
+</p>
 
-<img src="docs/alligotor.png" width="70%">
 
 ![golangci-lint](https://github.com/brumhard/alligotor/workflows/golangci-lint/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/brumhard/alligotor)](https://goreportcard.com/report/github.com/brumhard/alligotor)
