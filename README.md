@@ -1,15 +1,14 @@
 # Alligotor
 
-<p align="center">
+<div align="center">
   <img src="docs/alligotor.png" width="70%">
-</p>
+  
+  ![golangci-lint](https://github.com/brumhard/alligotor/workflows/golangci-lint/badge.svg)
+  [![Go Report Card](https://goreportcard.com/badge/github.com/brumhard/alligotor)](https://goreportcard.com/report/github.com/brumhard/alligotor)
+  [![Go Reference](https://pkg.go.dev/badge/github.com/brumhard/alligotor.svg)](https://pkg.go.dev/github.com/brumhard/alligotor)
 
-
-![golangci-lint](https://github.com/brumhard/alligotor/workflows/golangci-lint/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/brumhard/alligotor)](https://goreportcard.com/report/github.com/brumhard/alligotor)
-[![Go Reference](https://pkg.go.dev/badge/github.com/brumhard/alligotor.svg)](https://pkg.go.dev/github.com/brumhard/alligotor)
-
-The zero configuration configuration package.
+  The zero configuration configuration package.
+</div>
 
 ## Install
 
