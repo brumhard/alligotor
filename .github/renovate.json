@@ -4,17 +4,6 @@
     "group:allNonMajor",
     ":disableDependencyDashboard"
   ],
-  "packageRules": [
-    {
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "pin",
-        "digest"
-      ],
-      "automerge": true
-    }
-  ],
   "postUpdateOptions": [
     "gomodTidy",
     "gomodUpdateImportPaths"
