@@ -7,20 +7,20 @@ import (
 	"strings"
 	"testing/fstest"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("files", func() {
 	Describe("loadFiles", func() {
 		var (
-			nilGlobF = func(pattern string) ([]string, error) {
+			nilGlobF = func(_ string) ([]string, error) {
 				return nil, nil
 			}
 			globF = func(pattern string) ([]string, error) {
 				return []string{pattern}, nil
 			}
-			openF = func(path string) (io.Reader, error) { // nolint: unparam //needs to match openFunc sign
+			openF = func(path string) (io.Reader, error) {
 				return strings.NewReader(path), nil
 			}
 		)
