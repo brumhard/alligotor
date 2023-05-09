@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// nolint: gochecknoglobals // package lvl type definitions
+//nolint:gochecknoglobals // package lvl type definitions
 var (
 	zeroString      = ""
 	zeroDuration    = time.Duration(0)
