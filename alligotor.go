@@ -2,12 +2,12 @@ package alligotor
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -181,7 +181,7 @@ func readParameterConfig(configStr string) (map[string]string, error) {
 		val := keyVal[1]
 
 		if _, ok := fieldConfig[key]; ok {
-			return nil, errors.Wrap(ErrDuplicateConfigKey, key)
+			return nil, fmt.Errorf("%s: %w", key, ErrDuplicateConfigKey)
 		}
 
 		fieldConfig[key] = val

@@ -1,11 +1,11 @@
 package alligotor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
 

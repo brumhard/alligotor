@@ -2,11 +2,11 @@ package alligotor
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
