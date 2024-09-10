@@ -3,7 +3,6 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   enable:
     - bodyclose
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -15,7 +14,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -27,7 +26,7 @@ linters:
     - noctx
     - nolintlint
     - rowserrcheck
-    - exportloopref
+    - copyloopvar
     - staticcheck
     - stylecheck
     - typecheck
@@ -40,7 +39,7 @@ linters:
     - gocognit
     - godot
     - godox
-    - goerr113
+    - err113
     - nestif
     - prealloc
     - wsl
@@ -54,11 +53,12 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
+        - mnd
         - goconst
         - gochecknoglobals
         - gocritic
         - unparam
+        - revive
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
@@ -73,8 +73,6 @@ linters-settings:
   funlen:
     lines: 100
     statements: 50
-  gci:
-    local-prefixes: github.com/golangci/golangci-lint
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -96,25 +94,22 @@ linters-settings:
     local-prefixes: github.com/golangci/golangci-lint
   govet:
     enable-all: false
-  golint:
-    min-confidence: 0
-  gomnd:
-    settings:
-      mnd:
-        # don't include the "operation" and "assign"
-        checks:
-          - argument
-          - case
-          - return
-          - operation
-          - assign
-        ignored-numbers: 1,2
+  mnd:
+    # don't include the "operation" and "assign"
+    checks:
+      - argument
+      - case
+      - return
+      - operation
+      - assign
+    ignored-numbers:
+      - "1"
+      - "2"
   lll:
     line-length: 140
   misspell:
     locale: US
   nolintlint:
-    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: false # report any unused nolint directives
     require-explanation: true # require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped

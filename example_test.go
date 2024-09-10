@@ -44,7 +44,7 @@ func Example() {
 	_ = os.Setenv("TEST_CUSTOM", "key=value")
 
 	filePath := path.Join(dir, "example_config.json")
-	_ = os.WriteFile(filePath, jsonBytes, os.ModePerm)
+	_ = os.WriteFile(filePath, jsonBytes, 0600)
 
 	cfg := Config{WillStayDefault: "yessir"}
 

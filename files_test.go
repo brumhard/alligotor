@@ -88,8 +88,8 @@ var _ = Describe("files", func() {
 			jsonContent := []byte(`{"test":"json"}`)
 			ymlContent := []byte(`test: "yml"`)
 
-			Expect(os.WriteFile(path.Join(tmpDir, "test.json"), jsonContent, os.ModePerm)).To(Succeed())
-			Expect(os.WriteFile(path.Join(tmpDir, "test.yml"), ymlContent, os.ModePerm)).To(Succeed())
+			Expect(os.WriteFile(path.Join(tmpDir, "test.json"), jsonContent, 0600)).To(Succeed())
+			Expect(os.WriteFile(path.Join(tmpDir, "test.yml"), ymlContent, 0600)).To(Succeed())
 
 			s = NewFilesSource(path.Join(tmpDir, "test.*"))
 		})
